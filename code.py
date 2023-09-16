@@ -1,0 +1,74 @@
+import time
+import inputs
+from looper import setup_midi_loops, MidiLoop
+from menus import Menu
+from debug import debug, DEBUG_MODE
+from midi import (
+    setup_midi,
+    get_midi_note_name_text,
+    send_midi_note_on,
+    send_midi_note_off,
+)
+from display import check_show_display
+
+# Constants
+NAV_BUTTONS_POLL_S = 0.05
+DEBUG_PRINTTIME_S = 1
+
+# Initialize MIDI and other components
+setup_midi()
+setup_midi_loops()
+Menu.initialize()
+
+# Initialize time variables
+polling_time_prev = time.monotonic()
+if DEBUG_MODE:
+    debug_time_prev = time.monotonic()
+
+while True:
+    timenow = time.monotonic()
+
+    # Polling for navigation buttons
+    if (timenow - polling_time_prev) > NAV_BUTTONS_POLL_S:
+        inputs.check_inputs_slow()  # Update screen, button holds
+        Menu.display_clear_notifications()
+        check_show_display()
+        if DEBUG_MODE:
+            debug.check_display_debug()
+
+    # Fast input processing
+    inputs.check_inputs_fast()
+    inputs.process_inputs_fast()
+
+    # Send MIDI notes on and off for new button presses/releases
+    for note in inputs.new_notes_off:
+        note_val, velocity = note
+        if DEBUG_MODE:
+            print(
+                f"sending MIDI OFF val: {get_midi_note_name_text(note_val)} ({note_val}) vel: {velocity}"
+            )
+        send_midi_note_off(note_val)
+
+        if MidiLoop.current_loop_obj.loop_record_state:
+            MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, False)
+
+    for note in inputs.new_notes_on:
+        note_val, velocity = note
+        if DEBUG_MODE:
+            print(
+                f"sending MIDI ON val: {get_midi_note_name_text(note_val)} ({note_val}) vel: {velocity}"
+            )
+        send_midi_note_on(note_val, velocity)
+
+        if MidiLoop.current_loop_obj.loop_record_state:
+            MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, True)
+
+    # Handle loop notes if playing
+    if MidiLoop.current_loop_obj.loop_playstate:
+        new_notes = MidiLoop.current_loop_obj.get_new_notes()
+        if new_notes:
+            loop_notes_on, loop_notes_off = new_notes
+            for note in loop_notes_on:
+                send_midi_note_on(note[0], note[1])
+            for note in loop_notes_off:
+                send_midi_note_off(note[0])
