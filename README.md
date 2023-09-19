@@ -20,6 +20,7 @@ It worked pretty well but I honestly don't like the super loud arcade buttons so
   
 ## Components
 [DigiKey List with most parts](https://www.digikey.com/en/mylists/list/QX3GPIZNYA)
+Also see BOM csv in this repo
 
 1 x DJBB Midi Loopster PCB
 
