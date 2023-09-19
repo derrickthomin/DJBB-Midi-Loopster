@@ -1,6 +1,6 @@
 # DJBB-Midi-Loopster
 
-!!!! - This is incomplete - !!!
+!!!! - This is incomplete - !!!!
 it will be updated soon
 
 
