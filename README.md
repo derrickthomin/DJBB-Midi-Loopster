@@ -8,7 +8,7 @@ it will be updated soon
 
 The Midi Loopster is a MIDI 4x4 drum pad and midi looper based on the Raspberry Pi Pico.
 
-<img src="https://github.com/derrickthomin/DJBB-Midi-Loopster/assets/47721204/e1e61eba-2a83-49b6-9eee-5c55ebf01d13.jpg" width="400">
+<img src="https://github.com/derrickthomin/DJBB-Midi-Loopster/assets/47721204/97d21d23-8714-46ad-ad6a-cdd6b87e6adc" width="300">
 
 ## Background
 I created the [DJBB Arcade Button MIDI Drumpad](https://github.com/derrickthomin/djbb-midi-box) as an experiment on how to use a Raspberry Pi Pico microcontroller as a Midi controller.
