@@ -19,6 +19,8 @@ It worked pretty well but I honestly don't like the super loud arcade buttons so
 
   
 ## Components
+[DigiKey List with most parts](https://www.digikey.com/en/mylists/list/QX3GPIZNYA)
+
 1 x DJBB Midi Loopster PCB
 
 1 x Raspberry Pi Pico or Pico W With Headers **djt depends on wifi stuff
