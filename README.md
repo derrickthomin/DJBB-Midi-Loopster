@@ -54,7 +54,7 @@ Also see BOM csv in this repo
 17 x Cherry style key switches (technically optional... but you want em)
 
 ## Assembly
-See my guide here for in depth assembly instructions.
+[See my guide here](https://www.djbajablast.com/post/djbb-midi-loopster) for in depth assembly instructions.
 
 In short:
 - Solder the fn button and top left pad to the front of the board. You must do this first!! These are the top-leftmost buttons.
