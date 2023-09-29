@@ -18,6 +18,7 @@ from display import display_notification
 BUTTON_HOLD_THRESH_S = 0.200       # If held for this long, it counts as "holding" or a long hold.
 DBL_PRESS_THRESH_S = 0.4
 ENCODER_MODE_DURATION_S = 0.25     # Wait this long before sending off msg.
+encoder_pos_now = 0
 
 # State Tracking
 note_states = [False] * 16    # Keep track of if we are sending a midi note or not
@@ -42,6 +43,7 @@ new_notes_on = []             # Set when new midi note should send. Clear after 
 new_notes_off = []            # Set when a new note off message should go. int: midi note val
 encoder_pos_prev = 0                   # Track prev position
 singlehit_velocity_btn_midi = None       # In this mode, 1 midi note is mapped to 16 diff velocities
+hold_count = 0    # Used to help figure out when to reset the encoder.
 
 # Pin Setup
 DRUMPAD_BTN_PINS = [board.GP12, board.GP13, board.GP14, board.GP15,
@@ -148,6 +150,8 @@ def check_inputs_slow():
     global button_holdtimes_s 
     global encoder_button_holdtime
     global encoder_pos_prev
+    global encoder_pos_now
+    global hold_count
 
     any_button_held = False
 
@@ -159,29 +163,29 @@ def check_inputs_slow():
             button_holdtimes_s[i] = monotonic() - button_press_start_times[i]
             if button_holdtimes_s[i] > BUTTON_HOLD_THRESH_S and button_held[i] is False:
                 button_held[i] = True
-                encoder.position = get_midi_velocity_by_idx(i)
                 if DEBUG_MODE is True : print(f"holding {i}")
+
+                if Menu.current_menu_idx == 0:
+                    encoder.position = get_midi_velocity_by_idx(i)
 
         elif button_states[i] is False:
             button_held[i] = False
             button_holdtimes_s[i] = 0
         
         # Process holds here so we don't have to do it in fast loop
+        # djt - need to move this logic
         if button_held[i] is True:
             any_button_held = True
 
-            if midi.play_mode is "standard":
-                enc_pos_now = encoder.position
-                if enc_pos_now >= 127:
-                    enc_pos_now = 127
+            if midi.play_mode == "standard" and Menu.current_menu_idx == 0:
+                if encoder.position >= 127:
                     encoder.position = 127
-                if enc_pos_now < 0:
-                    enc_pos_now = 0
+                if encoder.position < 0:
                     encoder.position = 0
-                if enc_pos_now is not encoder_pos_prev:
-                    set_midi_velocity_by_idx(i,enc_pos_now)
-                    display_notification(f"velocity: {enc_pos_now}")
-                    encoder_pos_prev = enc_pos_now
+                if encoder.position is not encoder_pos_prev:
+                    set_midi_velocity_by_idx(i,encoder.position)
+                    display_notification(f"velocity: {encoder.position}")
+                    encoder_pos_prev = encoder.position
 
     update_nav_controls() # select button, encoder 
 

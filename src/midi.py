@@ -386,6 +386,10 @@ def get_midi_note_by_idx(idx):
     """
     if DEBUG_MODE: 
         print(f"Getting MIDI note for pad index: {idx}")
+
+    if idx > len(current_midi_notes) - 1:
+        idx = len(current_midi_notes) - 1
+        
     return current_midi_notes[idx]
 
 # Set MIDI note by index (used by external modules)
