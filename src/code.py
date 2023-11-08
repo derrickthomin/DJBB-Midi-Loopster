@@ -72,3 +72,4 @@ while True:
                 send_midi_note_on(note[0], note[1])
             for note in loop_notes_off:
                 send_midi_note_off(note[0])
+ 

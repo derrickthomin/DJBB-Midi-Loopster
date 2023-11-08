@@ -1,6 +1,7 @@
 import time
 from debug import debug,DEBUG_MODE
 import display
+from midi import clear_all_notes
 
 MIDI_NOTES_LIMIT = 50 # Add above this to the loop and we will run out of memory and crash...
 
@@ -83,6 +84,8 @@ class MidiLoop:
         self.current_loop_time = 0
         self.has_loop = False
 
+        clear_all_notes()   # Make sure nothing is caught in an on state
+
         display.display_notification("Loop Cleared")
 
     def loop_toggle_playstate(self, on_or_off=None):
@@ -113,7 +116,8 @@ class MidiLoop:
         
         display.toggle_play_icon(self.loop_playstate)
         
-        if DEBUG_MODE is True: debug.add_debug_line("Loop Playstate", self.loop_playstate)
+        if DEBUG_MODE:
+            debug.add_debug_line("Loop Playstate", self.loop_playstate)
 
     def toggle_record_state(self, on_or_off=None):
         """
@@ -144,7 +148,8 @@ class MidiLoop:
             self.has_loop = True
         
 
-        if DEBUG_MODE is True: debug.add_debug_line("Loop Record State", self.loop_record_state,True)
+        if DEBUG_MODE: 
+            debug.add_debug_line("Loop Record State", self.loop_record_state,True)
 
     def add_loop_note(self, midi, velocity, add_or_remove):
         """
@@ -166,6 +171,7 @@ class MidiLoop:
         if self.loop_start_timestamp == 0:
             if DEBUG_MODE is True: print("loop not playing, cannot add")
             display.display_notification(f"Play loop to record")
+            self.toggle_record_state(False)
             return
 
         note_time_offset = time.monotonic() - self.loop_start_timestamp
@@ -179,7 +185,8 @@ class MidiLoop:
 
         if add_or_remove:
             self.loop_notes_ontime_ary.append(note_data)
-            if DEBUG_MODE is True: debug.add_debug_line(f"Num Midi notes in looper",len(self.loop_notes_ontime_ary))
+            if DEBUG_MODE:
+                debug.add_debug_line(f"Num Midi notes in looper",len(self.loop_notes_ontime_ary))
         else:
             self.loop_notes_offtime_ary.append(note_data)
 
@@ -218,8 +225,10 @@ class MidiLoop:
 
         if len(new_on_notes) > 0 or len(new_off_notes) > 0:
             new_notes = (new_on_notes,new_off_notes)
-            if DEBUG_MODE is True: debug.add_debug_line("New Notes Arry",new_notes)
-            if DEBUG_MODE is True: debug.check_display_debug()
+            if DEBUG_MODE:
+                debug.add_debug_line("New Notes Arry",new_notes)
+            if DEBUG_MODE:
+                debug.check_display_debug()
             return new_notes
 
 def get_loopermode_display_text():
@@ -227,6 +236,11 @@ def get_loopermode_display_text():
                  "   dbl  = st/stop",
                  "   hold = clear loop"]
     return disp_text
+
+# Used as setup function in menu module
+def update_play_rec_icons():
+    display.toggle_play_icon(MidiLoop.current_loop_obj.loop_playstate)
+    display.toggle_recording_icon(MidiLoop.current_loop_obj.loop_record_state)
 
 def process_select_btn_press():
     MidiLoop.current_loop_obj.toggle_record_state()

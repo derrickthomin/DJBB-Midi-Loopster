@@ -83,8 +83,6 @@ scale_root_note_dict = {
 
 # Helper function to generate scale midi
 def get_midi_notes_in_scale(root_note, scale_intervals):
-    # MIDI note number for C0
-    C0_MIDI = 0
 
     # Number of octaves to generate notes for (C0 to C10)
     num_octaves = 11
@@ -94,9 +92,16 @@ def get_midi_notes_in_scale(root_note, scale_intervals):
 
     for octave in range(num_octaves):
         for interval in scale_intervals:
-            midi_note = C0_MIDI + (octave * 12) + ((root_note + interval) % 12)
-            if midi_note > 127:
+            midi_note = octave * 12 + ((root_note + interval) % 12)
+
+            # Account invalid midi, and when interval order is wonky
+            if len(current_midi_notes) > 0 and midi_note < current_midi_notes[-1]: 
+                midi_note = midi_note + 12
+            while midi_note > 127:
                 midi_note = midi_note - 12
+            while midi_note < 0:
+                midi_note = midi_note + 12
+            
             current_midi_notes.append(midi_note)
 
     # Now split into 16 pad sets 
@@ -131,10 +136,12 @@ major_scales_intervals = OrderedDict({
     'A': [9, 11, 0, 2, 4, 5, 7],   # A major
     'E': [4, 5, 7, 9, 11, 0, 2],   # E major
     'B': [11, 0, 2, 4, 5, 7, 9],   # B major
-    'F#': [6, 8, 9, 11, 1, 2, 4],  # F# major
-    'Db': [1, 3, 5, 6, 8, 10, 11], # Db major
-    'Ab': [8, 10, 0, 1, 3, 5, 6],  # Ab major
-    'Eb': [3, 5, 7, 8, 10, 0, 1],  # Eb major
+    'F#': [6, 7, 9, 11, 1, 2, 4],  # F# major
+    'Db': [1, 2, 4, 6, 7, 9, 11],  # Db major
+    'Ab': [8, 10, 0, 1, 3, 4, 6],  # Ab major
+    'Eb': [3, 5, 6, 8, 10, 11, 1], # Eb major
+    'Bb': [10, 0, 1, 3, 5, 6, 8],  # Bb major
+    'F': [5, 7, 8, 10, 0, 1, 3]    # F major
 })
 
 # Dictionary of common minor scales (key: root note, value: scale intervals)
@@ -149,6 +156,7 @@ minor_scales_intervals = OrderedDict({
     'Bb': [10, 11, 1, 3, 5, 6, 8], # Bb minor
     'F': [5, 7, 8, 10, 0, 1, 3],   # F minor
     'C': [0, 1, 3, 5, 7, 8, 10],   # C minor
+    'D': [2, 4, 5, 7, 9, 11, 1]    # D minor
 })
 
 # # Dictionary of other scale types (key: scale name, value: scale intervals)
@@ -271,8 +279,10 @@ def chg_scale(upOrDown=True,display_text = True):
 
     midi_bank_idx = 2
     current_midi_notes = current_scale_dict['midi_arrays'][midi_bank_idx]
-    if DEBUG_MODE is True : print(f"current midi notes: {current_midi_notes}")
-    if DEBUG_MODE is True : debug.add_debug_line("Current Scale",get_scale_display_text())
+    if DEBUG_MODE:
+        print(f"current midi notes: {current_midi_notes}")
+    if DEBUG_MODE:
+        debug.add_debug_line("Current Scale",get_scale_display_text())
     if display_text:
         display.display_text_middle(get_scale_display_text())
     #display_scale()
@@ -301,7 +311,8 @@ def chg_midi_bank(upOrDown = True, display_text=True):
     for note in current_midi_notes:
          midi.send(NoteOff(note, 0))
 
-    if DEBUG_MODE is True: debug.add_debug_line("Midi Bank Vals",get_midi_bank_display_text())
+    if DEBUG_MODE:
+        debug.add_debug_line("Midi Bank Vals",get_midi_bank_display_text())
     if display_text:
         display.display_text_middle(get_midi_bank_display_text())
 
@@ -444,6 +455,11 @@ def send_midi_note_off(note):
 
     if midi_mode == "aux" or midi_mode == "all":
         aux_midi.send(NoteOff(note, 0))
+
+# Send an off message to ALL notes. Use for panic, or to make sure nothing is stuck on.
+def clear_all_notes():
+    for i in range(127):
+        midi.send(NoteOff(i,0))
 
 # Change MIDI mode to the next or previous mode
 def chg_midi_mode(nextOrPrev=1):

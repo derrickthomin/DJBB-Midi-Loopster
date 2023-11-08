@@ -15,18 +15,20 @@ from display import display_notification
 
 
 # Constants djt - move this to some file
-BUTTON_HOLD_THRESH_S = 0.200       # If held for this long, it counts as "holding" or a long hold.
+BUTTON_HOLD_THRESH_S = 0.100       # If held for this long, it counts as "holding" or a long hold.
 DBL_PRESS_THRESH_S = 0.4
 ENCODER_MODE_DURATION_S = 0.25     # Wait this long before sending off msg.
 encoder_pos_now = 0
+encoder_delta = 0                  # Track change in encoder. Reset to 0 at end of loop (after processing)
+current_assignment_velocity = 0    # use when setting velocity for notess
 
 # State Tracking
-note_states = [False] * 16    # Keep track of if we are sending a midi note or not
-button_states = [False] * 16  # Keep track of the state of the button - may not want to send MIDI on a press
+note_states = [False] * 16         # Keep track of if we are sending a midi note or not
+button_states = [False] * 16       # Keep track of the state of the button - may not want to send MIDI on a press
 button_press_start_times = [None] * 16
 button_held = [False] * 16
-new_press = [False] * 16      # Track when a new btn press.
-new_release = [False] * 16    # and release
+new_press = [False] * 16           # Track when a new btn press.
+new_release = [False] * 16         # and release
 button_holdtimes_s = [0] * 16
 encoder_mode_ontimes = []
 select_button_starttime = 0
@@ -39,11 +41,10 @@ encoder_button_state = False
 encoder_button_starttime = 0
 encoder_button_holdtime = 0
 encoder_button_held = False
-new_notes_on = []             # Set when new midi note should send. Clear after sending. tuple: (note, velocity)
-new_notes_off = []            # Set when a new note off message should go. int: midi note val
-encoder_pos_prev = 0                   # Track prev position
+new_notes_on = []               # Set when new midi note should send. Clear after sending. tuple: (note, velocity)
+new_notes_off = []              # Set when a new note off message should go. int: midi note val
 singlehit_velocity_btn_midi = None       # In this mode, 1 midi note is mapped to 16 diff velocities
-hold_count = 0    # Used to help figure out when to reset the encoder.
+any_pad_held = False
 
 # Pin Setup
 DRUMPAD_BTN_PINS = [board.GP12, board.GP13, board.GP14, board.GP15,
@@ -74,68 +75,96 @@ for pin in DRUMPAD_BTN_PINS:
     note_buttons.append(note_pin)
 
 def update_nav_controls():
-    global select_button_state 
-    global select_button_starttime 
-    global select_button_holdtime_s 
+    """
+    Update the navigation control states and trigger corresponding actions based on button presses and holds.
+    This function manages the state and behavior of the select button and encoder button.
+
+    Globals Used:
+    - select_button_state: Indicates if the select button is currently pressed.
+    - select_button_starttime: Timestamp when the select button is pressed.
+    - select_button_holdtime_s: Threshold for considering the button press as a long hold.
+    - select_button_held: Flag to indicate if the select button is being held down.
+    - select_button_dbl_press: Flag to indicate if the select button is double-pressed.
+    - select_button_dbl_press_time: Timestamp for the last double-press event.
+    - encoder_button_state: Indicates if the encoder button is currently pressed.
+    - encoder_button_starttime: Timestamp when the encoder button is pressed.
+    - encoder_button_holdtime: Threshold for considering the encoder button press as a long hold.
+    - encoder_button_held: Flag to indicate if the encoder button is being held down.
+
+    Actions:
+    - Handles single presses, double presses, and long holds for the select button.
+    - Toggles the navigation mode when the encoder button is pressed.
+
+    Usage:
+    Call this function in a loop to continuously monitor and react to button presses and holds.
+
+    Example:
+    update_nav_controls()
+    """
+    global select_button_state
+    global select_button_starttime
+    global select_button_holdtime_s
     global select_button_held
     global select_button_dbl_press
     global select_button_dbl_press_time
-    global encoder_button_state, encoder_button_starttime
+    global encoder_button_state
     global encoder_button_starttime
     global encoder_button_holdtime
     global encoder_button_held
-    global encoder_pos_prev
 
-    # 1.2 - Check the select button 
-    if select_button.value and select_button_state is False:
+    # 1.2 - Check the select button
+    if select_button.value and not select_button_state:
+
         select_button_state = True
         select_button_starttime = monotonic()
-        select_button_dbl_press = False # just in case
+        select_button_dbl_press = False  # Reset double press flag
 
-        # check for dbl press
-        if (select_button_starttime - select_button_dbl_press_time < DBL_PRESS_THRESH_S) and select_button_dbl_press is False:
+        # Check for a double press
+        if (select_button_starttime - select_button_dbl_press_time < DBL_PRESS_THRESH_S) and not select_button_dbl_press:
             select_button_dbl_press = True
             select_button_dbl_press_time = 0
             Menu.current_menu.fn_button_dbl_press_function()
-            
         else:
             select_button_dbl_press = False
             select_button_dbl_press_time = 0
-            if DEBUG_MODE is True : print("New Sel Btn Press!!!")  
+            if DEBUG_MODE:
+                print("New Sel Btn Press!!!")
             Menu.current_menu.fn_button_press_function()
 
-    if select_button_state is True and (monotonic() - select_button_starttime) > BUTTON_HOLD_THRESH_S and select_button_held is False:
+    if select_button_state and (monotonic() - select_button_starttime) > BUTTON_HOLD_THRESH_S and not select_button_held:
         select_button_held = True
-        select_button_dbl_press = False # just in case
-        encoder_pos_prev = 0
-        encoder.position = 0
+        select_button_dbl_press = False  # Reset double press flag
 
         # Display updates
         Menu.toggle_select_button_icon(True)
         Menu.current_menu.fn_button_held_function()
-        if DEBUG_MODE is True : print("Select Button Held")
-    
-    if not select_button.value and select_button_state is True:
+        if DEBUG_MODE:
+            print("Select Button Held")
+
+    if not select_button.value and select_button_state:
         select_button_held = False
         select_button_state = False
-        select_button_dbl_press_time = monotonic() # reference in next press to see if it was a double
+        select_button_dbl_press_time = monotonic()  # Reference for next press to check for a double press
         select_button_starttime = 0
 
         # Display
         Menu.toggle_select_button_icon(False)
-    
+
     # 1.3 - Check the encoder button
-    if not encoder_button.value and encoder_button_state is False:
+    if not encoder_button.value and not encoder_button_state:
         encoder_button_state = True
         Menu.toggle_nav_mode()
         encoder_button_starttime = monotonic()
-        if DEBUG_MODE is True : print("New encoder Btn Press!!!")
-    
-    if encoder_button_state is True and (monotonic() - encoder_button_starttime) > BUTTON_HOLD_THRESH_S and encoder_button_held is False:
+        if DEBUG_MODE:
+            print("New encoder Btn Press!!!")
+
+    if encoder_button_state and (monotonic() - encoder_button_starttime) > BUTTON_HOLD_THRESH_S and not encoder_button_held:
+        # Handle long encoder button press
         encoder_button_held = True
-        if DEBUG_MODE is True : print("encoder Button Held")
-    
-    if encoder_button.value and encoder_button_state is True:
+        if DEBUG_MODE:
+            print("encoder Button Held")
+
+    if encoder_button.value and encoder_button_state:
         encoder_button_state = False
         encoder_button_starttime = 0
         encoder_button_held = False
@@ -149,24 +178,28 @@ def check_inputs_slow():
     global button_held 
     global button_holdtimes_s 
     global encoder_button_holdtime
-    global encoder_pos_prev
     global encoder_pos_now
-    global hold_count
+    global any_pad_held
+    global encoder_delta
+    global current_assignment_velocity
 
-    any_button_held = False
+    hold_count = 0
 
     # 1.1 - Check each drumpad button
+
+    # Get encoder delta. Only need once per loop? Save off chg and reset.
+    encoder_delta = encoder.position
+    encoder.position = 0
+
     for i in range(16):
 
+        delta_used = False
         # Update whether or not button is being held
         if button_states[i] is True:
             button_holdtimes_s[i] = monotonic() - button_press_start_times[i]
             if button_holdtimes_s[i] > BUTTON_HOLD_THRESH_S and button_held[i] is False:
                 button_held[i] = True
                 if DEBUG_MODE is True : print(f"holding {i}")
-
-                if Menu.current_menu_idx == 0:
-                    encoder.position = get_midi_velocity_by_idx(i)
 
         elif button_states[i] is False:
             button_held[i] = False
@@ -175,31 +208,41 @@ def check_inputs_slow():
         # Process holds here so we don't have to do it in fast loop
         # djt - need to move this logic
         if button_held[i] is True:
-            any_button_held = True
+            hold_count = hold_count + 1
+            if any_pad_held is False:
+                any_pad_held = True
+                current_assignment_velocity = get_midi_velocity_by_idx(i)
+            
+            #print(f"encoder delta: {encoder_delta} --------- abs encoder delta: {abs(encoder_delta)}")
+            if abs(encoder_delta) > 0:
+                current_assignment_velocity = current_assignment_velocity + encoder_delta
+                current_assignment_velocity = min(current_assignment_velocity,127) # Make sure its valid midi (0 - 127)
+                current_assignment_velocity = max(current_assignment_velocity,0)
+                delta_used = True
 
-            if midi.play_mode == "standard" and Menu.current_menu_idx == 0:
-                if encoder.position >= 127:
-                    encoder.position = 127
-                if encoder.position < 0:
-                    encoder.position = 0
-                if encoder.position is not encoder_pos_prev:
-                    set_midi_velocity_by_idx(i,encoder.position)
-                    display_notification(f"velocity: {encoder.position}")
-                    encoder_pos_prev = encoder.position
+                if midi.play_mode == "standard" and Menu.current_menu_idx == 0:
+                    set_midi_velocity_by_idx(i,current_assignment_velocity)
+                    display_notification(f"velocity: {current_assignment_velocity}")
+
+    if delta_used is True:
+        encoder_delta = 0 # **djt mayyybbe use a "did you use the delta" check and not chg this so often. maybe.
+
+    # No pads held, reset global flag
+    if hold_count == 0 and any_pad_held is True:
+        any_pad_held = False
+        encoder_delta = 0
 
     update_nav_controls() # select button, encoder 
 
     # Update encoder if not in drumpad mode w held btn
-    if any_button_held is True:
+    if any_pad_held is True:
         return
 
     enc_direction = None 
-    if encoder.position > encoder_pos_prev:
+    if encoder_delta > 0:
         enc_direction = True
-        encoder_pos_prev = encoder.position
-    elif encoder.position < encoder_pos_prev:
+    elif encoder_delta < 0:
         enc_direction = False
-        encoder_pos_prev = encoder.position
 
     if enc_direction is None: # no change, bail
         return
@@ -211,7 +254,6 @@ def check_inputs_slow():
 
     # 2. Not in nav mode, do stuff depending on setting
     else:
-        #Menu.current_menu.process_encoder_turn(enc_direction)
         Menu.current_menu.encoder_change_function(enc_direction)
 
 # - Checks for new presses and releases
@@ -250,8 +292,8 @@ def process_inputs_fast():
     global new_notes_off
     global singlehit_velocity_btn_midi
     global encoder_mode_ontimes
-    global encoder_pos_prev
-    #global time
+    global any_pad_held
+    global encoder_delta
 
     new_notes_on = []                 
     new_notes_off = []
@@ -272,19 +314,12 @@ def process_inputs_fast():
     if encoder_button_held:
         return
 
-    
     # In this mode, add directly to note queue with new encoder turns
-    if midi.play_mode is "encoder":
-
-        encoder_steps = encoder.position - encoder_pos_prev # outside of btn loop else we miss notes.
-        # if encoder.position is not encoder_pos_prev:
-        #     encoder_pos_prev = encoder.position
+    if midi.play_mode is "encoder" and any_pad_held is True:
 
         for i in range(16):
-            any_button_held = False
             if button_held[i] is True:
-                any_button_held = True
-                if encoder_steps < 0:
+                if encoder_delta < 0:
                     note = get_midi_note_by_idx(i)
 
                     if singlehit_velocity_btn_midi:
@@ -293,31 +328,13 @@ def process_inputs_fast():
                     for note in midi.current_midi_notes:
                         new_notes_off.append((note, 0))
 
-                if encoder_steps > 0:
+                if encoder_delta > 0:
                     note = get_midi_note_by_idx(i)
                     if singlehit_velocity_btn_midi:
                         note = singlehit_velocity_btn_midi
                     velocity = get_midi_velocity_by_idx(i)
                     new_notes_off.append((note, 0))  # Clear previous before starting new. 
                     new_notes_on.append((note, velocity))
-
-            # Dont mess up encoder position unless we have to
-            if encoder.position is not encoder_pos_prev and any_button_held is True:
-                encoder_pos_prev = encoder.position
-        
-                    # encoder_mode_ontimes.append((note,monotonic()))
-
-        # add off notes from encoder mode
-        # if len(encoder_mode_ontimes) > 0:
-        #     time_now = monotonic()
-        #     for i,time_tuple in enumerate(encoder_mode_ontimes):
-        #         note, time = time_tuple
-        #         print(f"CALLCLCLCL:    {time_now - time}")
-        #         if (time_now - time) > ENCODER_MODE_DURATION_S:
-        #             encoder_mode_ontimes.pop(i)
-        #             new_notes_off.append((note,0))
-
-
 
     # else: # normal mode 
     for i in range(16):

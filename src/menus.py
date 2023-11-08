@@ -22,6 +22,7 @@ class Menu:
 
     def __init__(self, menu_title, 
                  primary_display_function,
+                 setup_function,
                  encoder_change_function, 
                  fn_button_press_function, 
                  fn_button_dbl_press_function, 
@@ -35,6 +36,7 @@ class Menu:
 
         # Set up functions
         self.primary_display_function = primary_display_function
+        self.setup_function = setup_function
         self.encoder_change_function = encoder_change_function
         self.fn_button_press_function = fn_button_press_function
         self.fn_button_dbl_press_function = fn_button_dbl_press_function
@@ -64,6 +66,7 @@ class Menu:
         Menu.current_menu = Menu.menus[Menu.current_menu_idx]
         display.display_text_top(Menu.get_current_title_text())
         Menu.current_menu.display()
+        Menu.current_menu.setup()
     
     @classmethod
     def toggle_nav_mode(self,onOrOff=None):
@@ -75,7 +78,7 @@ class Menu:
             Menu.menu_nav_mode = onOrOff
     
         else:
-            if DEBUG_MODE is True: print("onOrOff must be boolean or None. Doing nothing.")
+            if DEBUG_MODE: print("onOrOff must be boolean or None. Doing nothing.")
             return
         
         display.toggle_menu_navmode_icon(Menu.menu_nav_mode)
@@ -89,7 +92,8 @@ class Menu:
     def display_notification(self, msg=None):
 
         if not msg:
-            if DEBUG_MODE is True: print("No notification message passed in. Doing nothing.")
+            if DEBUG_MODE: 
+                print("No notification message passed in. Doing nothing.")
             return
 
         display.display_notification(msg)
@@ -118,7 +122,10 @@ class Menu:
     def display(self):
         display_text = self.primary_display_function()
         display.display_text_middle(display_text)
-        return 
+    
+    # Run setup function
+    def setup(self):
+        self.setup_function()
 
 # ------------- Functions Used by Menus --------------- #
 def voidd(x=False):
@@ -126,16 +133,16 @@ def voidd(x=False):
 
 # ------------- Set up each menu ---------------------- #
 
-"""""
+""""
 Use the below template to add new  menus. Use voidd function if nothing should happen.
 
 Template
 my_new_menu = Menu("Name of Menu",                            # Title that is displayed
-                     primary_display_function,                # Displays main value in middl eof screen
-                     secondary_display_function,              # Displays text on btm of screen. Useful for helptext.                 
+                     primary_display_function,                # Displays main value in middle of screen
+                     setup_function,                          # run arbitrary screen setup code, if needed. NO ARGS.  
                      encoder_change_function,                 # Gets called when Encoder value changes (no other buttons held)
-                     fn_button_press_function,                 # Gets called when function Button pressed
-                     fn_button_dbl_press_function,         # Gets called when function btn double clicked
+                     fn_button_press_function,                # Gets called when function Button pressed
+                     fn_button_dbl_press_function,            # Gets called when function btn double clicked
                      fn_button_held_function,                 # Gets called when function button is held
                      fn_button_held_and_btn_click_function)   # Gets called when fn button held, and another drumpad button is clicked.
 
@@ -143,6 +150,7 @@ my_new_menu = Menu("Name of Menu",                            # Title that is di
 # 1) Change Midi Bank
 midibank_menu = Menu("Play",
                      midi.get_midi_bank_display_text,
+                     voidd,
                      midi.chg_midi_bank,
                      voidd,
                      midi.double_click_func_btn,
@@ -152,6 +160,7 @@ midibank_menu = Menu("Play",
 # 2) Change Scale
 scale_menu = Menu("Scale Select",
                   midi.get_scale_display_text,
+                  voidd,
                   midi.chg_scale,
                   voidd,
                   voidd,
@@ -161,6 +170,7 @@ scale_menu = Menu("Scale Select",
 # 3) Looper Settings
 looper_menu = Menu("Looper Mode",
                    looper.get_loopermode_display_text,
+                   looper.update_play_rec_icons,
                    voidd,
                    looper.process_select_btn_press,
                    looper.toggle_loops_playstate,

@@ -24,9 +24,10 @@ NOTIFICATION_ICON_TXT = "[!]"
 LOOP_ON_ICON = "∞"
 RECORDING_ICON = "(r)"
 PLAY_ICON = "|>"
-NAV_MODE_TXT = "<- ->"
-NAV_MSG_WIDTH = 30
+NAV_MODE_TXT = "N A V"
+NAV_MSG_WIDTH = 38
 NAV_ICON_X_START = WIDTH - NAV_MSG_WIDTH
+NAV_ICON_Y_START = 100
 
 REC_ICON_X_START = 0
 REC_ICON_Y_START = HEIGHT - 20
@@ -122,24 +123,6 @@ def toggle_select_button_icon(onOrOff=False):
         display.text(SEL_ICON_TXT, startx, starty, 1)
     display_flag_for_update()
 
-def toggle_notification_icon(onOrOff=False):
-    """
-    Toggle the notification icon on the screen.
-
-    Args:
-        onOrOff (bool, optional): Indicates whether to turn the icon on or off. Defaults to False.
-    """
-    icon_width = 20
-    icon_height = 18
-    pad = 2
-    startx = WIDTH - icon_width
-    starty = BOTTOM_Y_START
-
-    display.fill_rect(startx - pad, starty - pad, icon_width, icon_height, 0)  
-    if onOrOff:
-        display.text(NOTIFICATION_ICON_TXT, startx, starty, 1)
-    display_flag_for_update()
-
 def display_line_bottom():
     """
     Display a line at the bottom of the screen.
@@ -189,12 +172,15 @@ def toggle_menu_navmode_icon(onOrOff):
 
     Args:
         onOrOff (bool): Indicates whether to turn the icon on or off.
+
     """
     if onOrOff is True:
-        display.text(NAV_MODE_TXT, NAV_ICON_X_START, BOTTOM_Y_START, 1)
+        display.fill_rect(NAV_ICON_X_START, HEIGHT - LINEHEIGHT - 2, NAV_MSG_WIDTH, 10, 1)
+        display.text(NAV_MODE_TXT, NAV_ICON_X_START + 4, HEIGHT - LINEHEIGHT,0)
         display_flag_for_update()
+
     elif onOrOff is False:
-        display.fill_rect(NAV_ICON_X_START, BOTTOM_Y_START, NAV_MSG_WIDTH, LINEHEIGHT, 0)  
+        display.fill_rect(NAV_ICON_X_START, HEIGHT - LINEHEIGHT - 2, NAV_MSG_WIDTH, 10, 0)  
         display_flag_for_update()
 
 def check_show_display():
@@ -223,7 +209,6 @@ def display_notification(msg=None):
         return
     
     if (time.monotonic() - display_notification_FPS_timer) > DISPLAY_NOTIFICATION_METERING_THRESH:
-        toggle_notification_icon(True)
         notification_text_title = msg
 
         if notification_ontime > 0:
@@ -231,6 +216,7 @@ def display_notification(msg=None):
 
         current_top_text = msg
         display_text_top(msg, True)
+        
         notification_ontime = time.monotonic()
 
         display_notification_FPS_timer = time.monotonic()
@@ -257,7 +243,6 @@ def display_clear_notifications(replace_text=None):
         notification_ontime = -1
         notification_text_title = None
         display_text_top(replace_text)
-        toggle_notification_icon(False)
 
 # Initialize the display
 display.fill(0)
