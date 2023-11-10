@@ -1,0 +1,28 @@
+{
+    "DEFAULT_MIDIBANK_IDX": 3,
+    "helptext_DEFAULT_MIDIBANK_IDX": "Default: 3. Index for the default MIDI bank.",
+    
+    "MIDI_CHANNEL": 0,
+    "helptext_MIDI_CHANNEL": "Default: 0. MIDI channel for communication.",
+    
+    "MIDI_NOTES_DEFAULT": [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+    "helptext_MIDI_NOTES_DEFAULT": "Default: [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51]. Default MIDI notes assigned.",
+    
+    "MIDI_NOTES_LIMIT": 50,
+    "helptext_MIDI_NOTES_LIMIT": "Default: 50. Maximum limit for MIDI notes. Chg with care.",
+    
+    "NAV_BUTTONS_POLL_S": 1,
+    "helptext_NAV_BUTTONS_POLL_S": "Default: 1. Polling interval for navigation buttons in seconds.",
+    
+    "BUTTON_HOLD_THRESH_S": 0.5,
+    "helptext_BUTTON_HOLD_THRESH_S": "Default: 0.5. Threshold duration for considering a button as held in seconds.",
+    
+    "DBL_PRESS_THRESH_S": 0.4,
+    "helptext_DBL_PRESS_THRESH_S": "Default: 0.4. Threshold duration for considering a double press in seconds.",
+    
+    "NOTIFICATION_THRESH_S": 0.5,
+    "helptext_NOTIFICATION_THRESH_S": "Default: 0.5. Threshold duration for displaying notifications in seconds.",
+    
+    "DISPLAY_NOTIFICATION_METERING_THRESH": 0.08,
+    "helptext_DISPLAY_NOTIFICATION_METERING_THRESH": "Default: 0.08. Threshold for displaying metering notifications."
+}

@@ -1,9 +1,8 @@
+from settings import SETTINGS
 import midi
 import display
 import looper
 from debug import DEBUG_MODE
-
-NOTIFICATION_THRESH_S = 2
 
 class Menu:
 
