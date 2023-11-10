@@ -1,3 +1,4 @@
+from settings import SETTINGS
 import adafruit_midi
 import usb_midi
 import busio
@@ -8,24 +9,23 @@ from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 import display
 
-MIDI_BANK_IDX_DEFAULT = 3
-MIDI_NOTES_DEFAULT = [36 + i for i in range(16)]     # 36 = C1
-MIDI_CHANNEL = 0
+# PINS / SETUP
 NUM_PADS = 16
 MIDI_AUX_TX_PIN = board.GP16
 MIDI_AUX_RX_PIN = board.GP17 # not used, but so we can use library
 
-
 uart = busio.UART(MIDI_AUX_TX_PIN, MIDI_AUX_RX_PIN, baudrate=31250,timeout=0.001)
-midi = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=MIDI_CHANNEL)
+midi = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=SETTINGS['MIDI_CHANNEL'])
 aux_midi = adafruit_midi.MIDI(
     midi_in=uart,
     midi_out=uart,
     in_channel=(1),
-    out_channel=(MIDI_CHANNEL),
+    out_channel=(SETTINGS['MIDI_CHANNEL']),
     debug=False,
 )
-current_midi_notes = MIDI_NOTES_DEFAULT
+
+# MIDI 1: SET UP NOTES / BANKS
+current_midi_notes = SETTINGS['MIDI_NOTES_DEFAULT']
 midi_banks_chromatic = [[0 + i for i in range(16)],
               [4 + i for i in range(16)],
               [20 + i for i in range(16)],
@@ -36,16 +36,15 @@ midi_banks_chromatic = [[0 + i for i in range(16)],
               [100 + i for i in range(16)],
               [111 + i for i in range(16)]
               ]
-midi_banks = midi_banks_chromatic
-midi_bank_idx = MIDI_BANK_IDX_DEFAULT
+current_midibank_set = midi_banks_chromatic
+midi_bank_idx = SETTINGS['DEFAULT_MIDIBANK_IDX']
 scale_bank_idx = 0
 current_scale_dict = []
-midi_velocities = [120] * 16
-midi_velocities_singlenote = [8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,127]
+midi_velocities = [120] * 16 #*** djt - move to settings.py
+midi_velocities_singlenote = [8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,127] #*** djt - move to settings.py
 midi_mode = "all"   # "usb" "aux" or "all"
 play_mode = "standard" # 'standard' 'encoder'
 
-# Dictionary mapping MIDI values to music note names
 midi_to_note = {
     0: 'C0', 1: 'C#0', 2: 'D0', 3: 'D#0', 4: 'E0', 5: 'F0', 6: 'F#0', 7: 'G0', 8: 'G#0', 9: 'A0', 10: 'A#0', 11: 'B0',
     12: 'C1', 13: 'C#1', 14: 'D1', 15: 'D#1', 16: 'E1', 17: 'F1', 18: 'F#1', 19: 'G1', 20: 'G#1', 21: 'A1', 22: 'A#1', 23: 'B1',
@@ -60,7 +59,7 @@ midi_to_note = {
     120: 'C10', 121: 'C#10', 122: 'D10', 123: 'D#10', 124: 'E10', 125: 'F10', 126: 'F#10', 127: 'G10',
 }
 
-# ---------------  Scale Related ----------------- #
+# MIDI 2: SCALES 
 scale_root_note_dict = {
     'C': 0,
     'C#': 1,
@@ -80,51 +79,6 @@ scale_root_note_dict = {
     'Bb': 10,
     'B': 11
 }
-
-# Helper function to generate scale midi
-def get_midi_notes_in_scale(root_note, scale_intervals):
-
-    # Number of octaves to generate notes for (C0 to C10)
-    num_octaves = 11
-
-    # List to store MIDI notes
-    current_midi_notes = []
-
-    for octave in range(num_octaves):
-        for interval in scale_intervals:
-            midi_note = octave * 12 + ((root_note + interval) % 12)
-
-            # Account invalid midi, and when interval order is wonky
-            if len(current_midi_notes) > 0 and midi_note < current_midi_notes[-1]: 
-                midi_note = midi_note + 12
-            while midi_note > 127:
-                midi_note = midi_note - 12
-            while midi_note < 0:
-                midi_note = midi_note + 12
-            
-            current_midi_notes.append(midi_note)
-
-    # Now split into 16 pad sets 
-    midi_notes_pad_mapped = []
-    numarys = round(len(current_midi_notes) / NUM_PADS)  # how many 16 pad banks do we need
-    for i in range(numarys):
-        if i == 0:
-            padset = current_midi_notes[ : NUM_PADS-1]
-        else:
-            st = i * NUM_PADS
-            end = st + NUM_PADS
-            padset = current_midi_notes[st:end]
-
-            # Need arrays to be exaclty 16. Fix if needed.
-            pads_short = 16 - len(padset)
-            if pads_short > 0:
-                lastnote = padset[-1]
-                for i in range(pads_short):
-                    padset.append(lastnote)
-
-        midi_notes_pad_mapped.append(padset)
-
-    return midi_notes_pad_mapped
 
 all_scales_midi_dicts = []
 
@@ -159,18 +113,49 @@ minor_scales_intervals = OrderedDict({
     'D': [2, 4, 5, 7, 9, 11, 1]    # D minor
 })
 
-# # Dictionary of other scale types (key: scale name, value: scale intervals)
-# other_scales_intervals = OrderedDict({
-#     'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],        # Harmonic Minor
-#     'Melodic Minor': [0, 2, 3, 5, 7, 9, 11],         # Melodic Minor
-#     'Dorian': [0, 2, 3, 5, 7, 9, 10],                # Dorian
-#     'Phrygian': [0, 1, 3, 5, 7, 8, 10],              # Phrygian
-#     'Lydian': [0, 2, 4, 6, 7, 9, 11],                # Lydian
-#     'Mixolydian': [0, 2, 4, 5, 7, 9, 10],            # Mixolydian
-#     'Locrian': [0, 1, 3, 5, 6, 8, 10],               # Locrian
-#     'Major Pentatonic': [0, 2, 4, 7, 9],             # Major Pentatonic
-#     'Minor Pentatonic': [0, 3, 5, 7, 10],            # Minor Pentatonic
-# })
+def get_midi_notes_in_scale(root, scale_intervals): # Helper function to generate scale midi
+
+    # Number of octaves to generate notes for (C0 to C10)
+    num_octaves = 11
+
+    # List to store MIDI notes
+    midi_notes = []
+
+    for octave in range(num_octaves):
+        for interval in scale_intervals:
+            midi_note = octave * 12 + ((root + interval) % 12)
+
+            # Account invalid midi, and when interval order is wonky
+            if len(midi_notes) > 0 and midi_note < midi_notes[-1]: 
+                midi_note = midi_note + 12
+            while midi_note > 127:
+                midi_note = midi_note - 12
+            while midi_note < 0:
+                midi_note = midi_note + 12
+            
+            midi_notes.append(midi_note)
+
+    # Now split into 16 pad sets 
+    midi_notes_pad_mapped = []
+    numarys = round(len(midi_notes) / NUM_PADS)  # how many 16 pad banks do we need
+    for i in range(numarys):
+        if i == 0:
+            padset = midi_notes[ : NUM_PADS-1]
+        else:
+            st = i * NUM_PADS
+            end = st + NUM_PADS
+            padset = midi_notes[st:end]
+
+            # Need arrays to be exaclty 16. Fix if needed.
+            pads_short = 16 - len(padset)
+            if pads_short > 0:
+                lastnote = padset[-1]
+                for i in range(pads_short):
+                    padset.append(lastnote)
+
+        midi_notes_pad_mapped.append(padset)
+
+    return midi_notes_pad_mapped
 
 # Generate arrays for all scales
 chromatic_dict = {
@@ -300,14 +285,14 @@ def chg_midi_bank(upOrDown = True, display_text=True):
     global midi_bank_idx
     global current_midi_notes
 
-    midi_banks = current_scale_dict['midi_arrays']
-    if upOrDown is True and midi_bank_idx < (len(midi_banks) - 1):
+    current_midibank_set = current_scale_dict['midi_arrays']
+    if upOrDown is True and midi_bank_idx < (len(current_midibank_set) - 1):
         midi_bank_idx = midi_bank_idx + 1
 
     if upOrDown is False and midi_bank_idx > 0:
         midi_bank_idx = midi_bank_idx - 1
 
-    current_midi_notes = midi_banks[midi_bank_idx] # Dont let notes get stuck on
+    current_midi_notes = current_midibank_set[midi_bank_idx] # Dont let notes get stuck on
     for note in current_midi_notes:
          midi.send(NoteOff(note, 0))
 

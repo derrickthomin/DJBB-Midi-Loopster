@@ -1,10 +1,16 @@
+from settings import SETTINGS
 import board
 import busio
 import adafruit_ssd1306
 import time
 
+# PINS / SETUP
 SCL_PIN = board.GP19              
 SDA_PIN = board.GP18
+i2c = busio.I2C(SCL_PIN, SDA_PIN)
+display = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+
+# SCREEN CONSTANTS
 WIDTH = 128
 HEIGHT = 64
 TOP_HEIGHT = 16
@@ -14,9 +20,6 @@ BOTTOM_Y_START = 56
 BOTTOM_LINE_Y_START = MIDDLE_Y_START + MIDDLE_HEIGHT + 1
 LINEHEIGHT = 8
 CHARS_PER_LINE = 20
-
-display = None
-
 TEXT_PAD = 4
 SEL_ICON_TXT = "[fn]"
 SEL_ICON_X_START = 30  # Where to display icon when select button is being held
@@ -28,12 +31,10 @@ NAV_MODE_TXT = "N A V"
 NAV_MSG_WIDTH = 38
 NAV_ICON_X_START = WIDTH - NAV_MSG_WIDTH
 NAV_ICON_Y_START = 100
-
 REC_ICON_X_START = 0
 REC_ICON_Y_START = HEIGHT - 20
-NOTIFICATION_THRESH_S = 2
-DISPLAY_NOTIFICATION_METERING_THRESH = 0.08 # max refresh rate
 
+# TRACKING VARIABLES
 display_needs_update_flag = True  # If true, show the display
 notification_text_title = None
 notification_ontime = 0
@@ -41,9 +42,6 @@ current_top_text = None
 prev_top_text = None
 display_notification_FPS_timer = 0
 display_notification_most_recent = ""
-
-i2c = busio.I2C(SCL_PIN, SDA_PIN)
-display = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
 
 
 # Sets global display_needs_update_flag 
@@ -208,7 +206,7 @@ def display_notification(msg=None):
     if not msg:
         return
     
-    if (time.monotonic() - display_notification_FPS_timer) > DISPLAY_NOTIFICATION_METERING_THRESH:
+    if (time.monotonic() - display_notification_FPS_timer) > SETTINGS['DISPLAY_NOTIFICATION_METERING_THRESH']:
         notification_text_title = msg
 
         if notification_ontime > 0:
@@ -239,7 +237,7 @@ def display_clear_notifications(replace_text=None):
     if notification_text_title == replace_text:
         return
     
-    if time.monotonic() - notification_ontime > NOTIFICATION_THRESH_S:
+    if time.monotonic() - notification_ontime > SETTINGS['NOTIFICATION_THRESH_S']:
         notification_ontime = -1
         notification_text_title = None
         display_text_top(replace_text)

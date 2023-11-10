@@ -1,9 +1,8 @@
+from settings import SETTINGS
 import time
 from debug import debug,DEBUG_MODE
 import display
 from midi import clear_all_notes
-
-MIDI_NOTES_LIMIT = 50 # Add above this to the loop and we will run out of memory and crash...
 
 class MidiLoop:
     """
@@ -52,7 +51,7 @@ class MidiLoop:
         self.loop_notes_off_queue = []
         self.loop_playstate = False
         self.loop_record_state = False
-        self.has_loop =  False    
+        self.has_loop =  False   
 
     def reset_loop(self):
         """
@@ -63,9 +62,9 @@ class MidiLoop:
         self.loop_notes_on_queue = []
         self.loop_notes_off_queue = []
 
-        for i,note in enumerate(self.loop_notes_ontime_ary):
+        for note in (self.loop_notes_ontime_ary):
             self.loop_notes_on_queue.append(note)
-        for i,note in enumerate(self.loop_notes_offtime_ary):
+        for note in (self.loop_notes_offtime_ary):
             self.loop_notes_off_queue.append(note)
 
     def clear_loop(self):
@@ -178,7 +177,7 @@ class MidiLoop:
         note_data = (midi, velocity, note_time_offset)
 
         # Prevent memory related crashes
-        if len(self.loop_notes_ontime_ary) > MIDI_NOTES_LIMIT:
+        if len(self.loop_notes_ontime_ary) > SETTINGS['MIDI_NOTES_LIMIT']:
             display.display_notification(f"MAX NOTES REACHED")
             self.toggle_record_state(False)
             return
@@ -204,7 +203,8 @@ class MidiLoop:
 
         now_time = time.monotonic()
         if now_time - self.loop_start_timestamp > self.total_loop_time:
-            if DEBUG_MODE is True: print(f"self.total_loop_time: {self.total_loop_time}")
+            if DEBUG_MODE:
+                print(f"self.total_loop_time: {self.total_loop_time}")
             self.reset_loop()
             return
 
@@ -237,21 +237,18 @@ def get_loopermode_display_text():
                  "   hold = clear loop"]
     return disp_text
 
-# Used as setup function in menu module
-def update_play_rec_icons():
+def update_play_rec_icons(): # Used as setup function in menu module
     display.toggle_play_icon(MidiLoop.current_loop_obj.loop_playstate)
     display.toggle_recording_icon(MidiLoop.current_loop_obj.loop_record_state)
 
-def process_select_btn_press():
+def process_select_btn_press(): # Used in Menu setup. does what it says.
     MidiLoop.current_loop_obj.toggle_record_state()
     return
 
-# Clears all plauyuing loops
-def clear_all_loops():
+def clear_all_loops():       # Clears all playing loops
     MidiLoop.current_loop_obj.clear_loop()
 
-# Stop all playing loops. Also turn off recording.
-def toggle_loops_playstate():
+def toggle_loops_playstate(): # Stop all playing loops. Also turn off recording.
     MidiLoop.current_loop_obj.loop_toggle_playstate()
     MidiLoop.current_loop_obj.toggle_record_state(False)
 

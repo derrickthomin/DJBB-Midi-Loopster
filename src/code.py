@@ -1,3 +1,4 @@
+from settings import SETTINGS
 import time
 import inputs
 from looper import setup_midi_loops, MidiLoop
@@ -11,13 +12,9 @@ from midi import (
 )
 from display import check_show_display
 
-# Constants
-NAV_BUTTONS_POLL_S = 0.05
-DEBUG_PRINTTIME_S = 1
-
 # Initialize MIDI and other components
 setup_midi()
-setup_midi_loops()
+setup_midi_loops()	
 Menu.initialize()
 
 # Initialize time variables
@@ -29,7 +26,7 @@ while True:
     timenow = time.monotonic()
 
     # Polling for navigation buttons
-    if (timenow - polling_time_prev) > NAV_BUTTONS_POLL_S:
+    if (timenow - polling_time_prev) > SETTINGS['NAV_BUTTONS_POLL_S']:
         inputs.check_inputs_slow()  # Update screen, button holds
         Menu.display_clear_notifications()
         check_show_display()
@@ -40,7 +37,7 @@ while True:
     inputs.check_inputs_fast()
     inputs.process_inputs_fast()
 
-    # Send MIDI notes on and off for new button presses/releases
+    # Send MIDI notes off 
     for note in inputs.new_notes_off:
         note_val, velocity = note
         if DEBUG_MODE:
@@ -52,6 +49,7 @@ while True:
         if MidiLoop.current_loop_obj.loop_record_state:
             MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, False)
 
+    # Send MIDI notes on
     for note in inputs.new_notes_on:
         note_val, velocity = note
         if DEBUG_MODE:

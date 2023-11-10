@@ -1,3 +1,4 @@
+from settings import SETTINGS
 import board
 import digitalio
 import rotaryio
@@ -8,45 +9,11 @@ from midi import (get_midi_velocity_by_idx,
                        get_midi_note_by_idx,
                        get_midi_velocity_singlenote_by_idx,
                        get_midi_note_name_text)
-#from display import Menu
 from menus import Menu
 from time import monotonic
 from display import display_notification
 
-
-# Constants djt - move this to some file
-BUTTON_HOLD_THRESH_S = 0.100       # If held for this long, it counts as "holding" or a long hold.
-DBL_PRESS_THRESH_S = 0.4
-ENCODER_MODE_DURATION_S = 0.25     # Wait this long before sending off msg.
-encoder_pos_now = 0
-encoder_delta = 0                  # Track change in encoder. Reset to 0 at end of loop (after processing)
-current_assignment_velocity = 0    # use when setting velocity for notess
-
-# State Tracking
-note_states = [False] * 16         # Keep track of if we are sending a midi note or not
-button_states = [False] * 16       # Keep track of the state of the button - may not want to send MIDI on a press
-button_press_start_times = [None] * 16
-button_held = [False] * 16
-new_press = [False] * 16           # Track when a new btn press.
-new_release = [False] * 16         # and release
-button_holdtimes_s = [0] * 16
-encoder_mode_ontimes = []
-select_button_starttime = 0
-select_button_holdtime_s = 0
-select_button_held = False
-select_button_dbl_press = False
-select_button_dbl_press_time = 0
-select_button_state = False
-encoder_button_state = False
-encoder_button_starttime = 0
-encoder_button_holdtime = 0
-encoder_button_held = False
-new_notes_on = []               # Set when new midi note should send. Clear after sending. tuple: (note, velocity)
-new_notes_off = []              # Set when a new note off message should go. int: midi note val
-singlehit_velocity_btn_midi = None       # In this mode, 1 midi note is mapped to 16 diff velocities
-any_pad_held = False
-
-# Pin Setup
+# PINS / SETUP
 DRUMPAD_BTN_PINS = [board.GP12, board.GP13, board.GP14, board.GP15,
                     board.GP8, board.GP9, board.GP10, board.GP11, board.GP4,
                     board.GP5, board.GP6, board.GP7, board.GP0, board.GP1, board.GP2, board.GP3]
@@ -66,13 +33,38 @@ encoder_button.direction = digitalio.Direction.INPUT
 encoder_button.pull = digitalio.Pull.UP
 
 note_buttons = []
-
-# Populate note_button array 
 for pin in DRUMPAD_BTN_PINS:
     note_pin = digitalio.DigitalInOut(pin)
     note_pin.direction = digitalio.Direction.INPUT
     note_pin.pull = digitalio.Pull.DOWN
     note_buttons.append(note_pin)
+
+# TRACKING VARIABLES
+encoder_pos_now = 0
+encoder_delta = 0                  # Track change in encoder. Reset to 0 at end of loop (after processing)
+current_assignment_velocity = 0    # use when setting velocity for notess
+select_button_starttime = 0
+select_button_holdtime_s = 0
+select_button_held = False
+select_button_dbl_press = False
+select_button_dbl_press_time = 0
+select_button_state = False
+encoder_button_state = False
+encoder_button_starttime = 0
+encoder_button_holdtime = 0
+encoder_button_held = False
+singlehit_velocity_btn_midi = None       # In this mode, 1 midi note is mapped to 16 diff velocities
+any_pad_held = False
+note_states = [False] * 16         # Keep track of if we are sending a midi note or not
+button_states = [False] * 16       # Keep track of the state of the button - may not want to send MIDI on a press
+button_press_start_times = [None] * 16
+button_held = [False] * 16
+new_press = [False] * 16           # Track when a new btn press.
+new_release = [False] * 16         # and release
+button_holdtimes_s = [0] * 16
+encoder_mode_ontimes = []
+new_notes_on = []               # Set when new midi note should send. Clear after sending. tuple: (note, velocity)
+new_notes_off = []              # Set when a new note off message should go. int: midi note val
 
 def update_nav_controls():
     """
@@ -120,7 +112,7 @@ def update_nav_controls():
         select_button_dbl_press = False  # Reset double press flag
 
         # Check for a double press
-        if (select_button_starttime - select_button_dbl_press_time < DBL_PRESS_THRESH_S) and not select_button_dbl_press:
+        if (select_button_starttime - select_button_dbl_press_time < SETTINGS['DBL_PRESS_THRESH_S']) and not select_button_dbl_press:
             select_button_dbl_press = True
             select_button_dbl_press_time = 0
             Menu.current_menu.fn_button_dbl_press_function()
@@ -131,7 +123,7 @@ def update_nav_controls():
                 print("New Sel Btn Press!!!")
             Menu.current_menu.fn_button_press_function()
 
-    if select_button_state and (monotonic() - select_button_starttime) > BUTTON_HOLD_THRESH_S and not select_button_held:
+    if select_button_state and (monotonic() - select_button_starttime) > SETTINGS['BUTTON_HOLD_THRESH_S'] and not select_button_held:
         select_button_held = True
         select_button_dbl_press = False  # Reset double press flag
 
@@ -158,7 +150,7 @@ def update_nav_controls():
         if DEBUG_MODE:
             print("New encoder Btn Press!!!")
 
-    if encoder_button_state and (monotonic() - encoder_button_starttime) > BUTTON_HOLD_THRESH_S and not encoder_button_held:
+    if encoder_button_state and (monotonic() - encoder_button_starttime) > SETTINGS['BUTTON_HOLD_THRESH_S'] and not encoder_button_held:
         # Handle long encoder button press
         encoder_button_held = True
         if DEBUG_MODE:
@@ -197,7 +189,7 @@ def check_inputs_slow():
         # Update whether or not button is being held
         if button_states[i] is True:
             button_holdtimes_s[i] = monotonic() - button_press_start_times[i]
-            if button_holdtimes_s[i] > BUTTON_HOLD_THRESH_S and button_held[i] is False:
+            if button_holdtimes_s[i] > SETTINGS['BUTTON_HOLD_THRESH_S'] and button_held[i] is False:
                 button_held[i] = True
                 if DEBUG_MODE is True : print(f"holding {i}")
 
@@ -225,7 +217,7 @@ def check_inputs_slow():
                     display_notification(f"velocity: {current_assignment_velocity}")
 
     if delta_used is True:
-        encoder_delta = 0 # **djt mayyybbe use a "did you use the delta" check and not chg this so often. maybe.
+        encoder_delta = 0
 
     # No pads held, reset global flag
     if hold_count == 0 and any_pad_held is True:
