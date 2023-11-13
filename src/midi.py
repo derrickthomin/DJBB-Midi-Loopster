@@ -7,7 +7,7 @@ from collections import OrderedDict
 from debug import debug, DEBUG_MODE
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
-import display
+from display import display_notification,display_text_middle
 
 # PINS / SETUP
 NUM_PADS = 16
@@ -40,10 +40,11 @@ current_midibank_set = midi_banks_chromatic
 midi_bank_idx = SETTINGS['DEFAULT_MIDIBANK_IDX']
 scale_bank_idx = 0
 current_scale_dict = []
-midi_velocities = [120] * 16 #*** djt - move to settings.py
-midi_velocities_singlenote = [8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,127] #*** djt - move to settings.py
+midi_velocities = [SETTINGS['DEFAULT_VELOCITY']] * 16 
+midi_velocities_singlenote = SETTINGS['DEFAULT_SINGLENOTE_MODE_VELOCITIES'] 
 midi_mode = "all"   # "usb" "aux" or "all"
 play_mode = "standard" # 'standard' 'encoder'
+current_assignment_velocity = 120
 
 midi_to_note = {
     0: 'C0', 1: 'C#0', 2: 'D0', 3: 'D#0', 4: 'E0', 5: 'F0', 6: 'F#0', 7: 'G0', 8: 'G#0', 9: 'A0', 10: 'A#0', 11: 'B0',
@@ -269,7 +270,7 @@ def chg_scale(upOrDown=True,display_text = True):
     if DEBUG_MODE:
         debug.add_debug_line("Current Scale",get_scale_display_text())
     if display_text:
-        display.display_text_middle(get_scale_display_text())
+        display_text_middle(get_scale_display_text())
     #display_scale()
 
 # External use - by Menu object to print to screen
@@ -299,7 +300,7 @@ def chg_midi_bank(upOrDown = True, display_text=True):
     if DEBUG_MODE:
         debug.add_debug_line("Midi Bank Vals",get_midi_bank_display_text())
     if display_text:
-        display.display_text_middle(get_midi_bank_display_text())
+        display_text_middle(get_midi_bank_display_text())
 
     return
 
@@ -481,9 +482,35 @@ def double_click_func_btn():
     elif play_mode == "encoder":
         play_mode = "standard"
     
-    display.display_notification(f"Note mode: {play_mode}")
+    display_notification(f"Note mode: {play_mode}")
 
-# Called in code.py to set up MIDI
+# Called when on the play screen and an encoder btn is held.
+# Params: 
+#   int - encoder steps recorded.
+#   bool - True if this is the first hold of this hold session (resets when all released)
+# Returns: 
+#   bool - if encoder count was used in this function, return true
+def pad_held_function(pad_idx,encoder_delta,first_pad_held):
+
+    global current_assignment_velocity
+    delta_used = False
+
+    # No pads were held before this one in this session
+    if first_pad_held is True:
+        current_assignment_velocity = get_midi_velocity_by_idx(pad_idx)
+
+    if abs(encoder_delta) > 0:
+        current_assignment_velocity = current_assignment_velocity + encoder_delta
+        current_assignment_velocity = min(current_assignment_velocity,127) # Make sure its valid midi (0 - 127)
+        current_assignment_velocity = max(current_assignment_velocity,0)
+        delta_used = True
+
+        if play_mode == "standard":
+            set_midi_velocity_by_idx(pad_idx,current_assignment_velocity)
+            display_notification(f"velocity: {current_assignment_velocity}")
+
+    return delta_used
+
 def setup_midi():
     global current_scale_dict
     current_scale_dict = all_scales_midi_dicts[scale_bank_idx]

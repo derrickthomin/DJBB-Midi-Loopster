@@ -5,13 +5,11 @@ import rotaryio
 import midi
 from debug import DEBUG_MODE
 from midi import (get_midi_velocity_by_idx,
-                       set_midi_velocity_by_idx,
                        get_midi_note_by_idx,
                        get_midi_velocity_singlenote_by_idx,
                        get_midi_note_name_text)
 from menus import Menu
 from time import monotonic
-from display import display_notification
 
 # PINS / SETUP
 DRUMPAD_BTN_PINS = [board.GP12, board.GP13, board.GP14, board.GP15,
@@ -42,7 +40,6 @@ for pin in DRUMPAD_BTN_PINS:
 # TRACKING VARIABLES
 encoder_pos_now = 0
 encoder_delta = 0                  # Track change in encoder. Reset to 0 at end of loop (after processing)
-current_assignment_velocity = 0    # use when setting velocity for notess
 select_button_starttime = 0
 select_button_holdtime_s = 0
 select_button_held = False
@@ -198,23 +195,13 @@ def check_inputs_slow():
             button_holdtimes_s[i] = 0
         
         # Process holds here so we don't have to do it in fast loop
-        # djt - need to move this logic
         if button_held[i] is True:
             hold_count = hold_count + 1
             if any_pad_held is False:
                 any_pad_held = True
-                current_assignment_velocity = get_midi_velocity_by_idx(i)
-            
-            #print(f"encoder delta: {encoder_delta} --------- abs encoder delta: {abs(encoder_delta)}")
-            if abs(encoder_delta) > 0:
-                current_assignment_velocity = current_assignment_velocity + encoder_delta
-                current_assignment_velocity = min(current_assignment_velocity,127) # Make sure its valid midi (0 - 127)
-                current_assignment_velocity = max(current_assignment_velocity,0)
-                delta_used = True
-
-                if midi.play_mode == "standard" and Menu.current_menu_idx == 0:
-                    set_midi_velocity_by_idx(i,current_assignment_velocity)
-                    display_notification(f"velocity: {current_assignment_velocity}")
+                delta_used = Menu.current_menu.pad_held_function(i,encoder_delta,True)
+            else:
+                delta_used = Menu.current_menu.pad_held_function(i,encoder_delta,False)
 
     if delta_used is True:
         encoder_delta = 0

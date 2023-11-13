@@ -1,8 +1,9 @@
 import time
 from collections import OrderedDict
+from settings import SETTINGS
 
 DEBUG_INTERVAL_S = 1.5  # Interval to print debug info (seconds)
-DEBUG_MODE = True
+DEBUG_MODE = SETTINGS["DEBUG"]
 
 class Debug():
     """

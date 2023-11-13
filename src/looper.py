@@ -1,5 +1,6 @@
 from settings import SETTINGS
 import time
+import random
 from debug import debug,DEBUG_MODE
 import display
 from midi import clear_all_notes
@@ -154,8 +155,7 @@ class MidiLoop:
         """
         Adds a note to the loop record.
 
-        About ~80 midi notes is the max until memory fails.
-        ** djt maybe set a limit??
+        About ~80 midi notes is the max until memory fails. Default limit = 50.
 
         Args:
             midi (int): MIDI note number.
@@ -188,6 +188,18 @@ class MidiLoop:
                 debug.add_debug_line(f"Num Midi notes in looper",len(self.loop_notes_ontime_ary))
         else:
             self.loop_notes_offtime_ary.append(note_data)
+    
+    # remove a note at specified IDX
+    def remove_loop_note(self,idx):
+
+        if idx < 0 or idx > len(self.loop_notes_ontime_ary):
+            if DEBUG_MODE:
+                print("cannot remove loop note - invalid index")
+            return
+        else:
+            self.loop_notes_ontime_ary.pop(idx)
+            self.loop_notes_offtime_ary.pop(idx)
+        
 
     def get_new_notes(self):
         """
@@ -252,7 +264,21 @@ def toggle_loops_playstate(): # Stop all playing loops. Also turn off recording.
     MidiLoop.current_loop_obj.loop_toggle_playstate()
     MidiLoop.current_loop_obj.toggle_record_state(False)
 
-# DJT for now just make one...
+# Called when encoder changes and in the looper menu
+# - direction = boolean. 
+def encoder_chg_function(direction):
+    notes_ary_length = len(MidiLoop.current_loop_obj.loop_notes_ontime_ary)
+    if notes_ary_length < 1:
+        return
+    if direction:
+        return # nothing for now
+    else:
+        remove_idx = random.randint(0,notes_ary_length - 1)
+        MidiLoop.current_loop_obj.remove_loop_note(remove_idx)
+        display.display_notification(f"Removed note: {remove_idx + 1}")
+
+
+# for now just make one...
 def setup_midi_loops():
     """
     Initializes a MIDI loop and sets it as the current loop object.

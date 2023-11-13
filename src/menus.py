@@ -8,7 +8,7 @@ class Menu:
 
     # Class level biz
     menus = []             # List of all menu objects created
-    current_menu_idx = 0
+    current_menu_idx = SETTINGS["STARTUP_MENU_IDX"] 
     number_of_menus = 0    # Used in displaying which menu u are on eg. "1/4"
     current_menu = ""      # Points to current menu object
     menu_nav_mode = False  # True = controls change menus. False = controls change settings on current menu
@@ -22,7 +22,8 @@ class Menu:
     def __init__(self, menu_title, 
                  primary_display_function,
                  setup_function,
-                 encoder_change_function, 
+                 encoder_change_function,
+                 pad_held_function, 
                  fn_button_press_function, 
                  fn_button_dbl_press_function, 
                  fn_button_held_function,
@@ -37,6 +38,7 @@ class Menu:
         self.primary_display_function = primary_display_function
         self.setup_function = setup_function
         self.encoder_change_function = encoder_change_function
+        self.pad_held_function = pad_held_function
         self.fn_button_press_function = fn_button_press_function
         self.fn_button_dbl_press_function = fn_button_dbl_press_function
         self.fn_button_held_function = fn_button_held_function
@@ -44,7 +46,6 @@ class Menu:
 
         Menu.number_of_menus += 1
         Menu.menus.append(self)
-        Menu.current_menu = Menu.menus[0]  # Default current menu to 0 idx
     
     # Pass in boolean for which direction to go.
     @classmethod
@@ -106,6 +107,7 @@ class Menu:
     # Call once in code.py to display the initial menu
     @classmethod
     def initialize(self):
+        Menu.current_menu = Menu.menus[Menu.current_menu_idx]
         menu = Menu.current_menu
         menu.display()
         display.display_text_top(Menu.get_current_title_text())
@@ -127,30 +129,32 @@ class Menu:
         self.setup_function()
 
 # ------------- Functions Used by Menus --------------- #
-def voidd(x=False):
+def voidd(*args):
     return None
 
 # ------------- Set up each menu ---------------------- #
 
-""""
-Use the below template to add new  menus. Use voidd function if nothing should happen.
 
-Template
-my_new_menu = Menu("Name of Menu",                            # Title that is displayed
-                     primary_display_function,                # Displays main value in middle of screen
-                     setup_function,                          # run arbitrary screen setup code, if needed. NO ARGS.  
-                     encoder_change_function,                 # Gets called when Encoder value changes (no other buttons held)
-                     fn_button_press_function,                # Gets called when function Button pressed
-                     fn_button_dbl_press_function,            # Gets called when function btn double clicked
-                     fn_button_held_function,                 # Gets called when function button is held
-                     fn_button_held_and_btn_click_function)   # Gets called when fn button held, and another drumpad button is clicked.
+# Use the below template to add new  menus. Use voidd function if nothing should happen.
 
-"""
+# Template
+# my_new_menu = Menu("Name of Menu",       # Title that is displayed
+#   primary_display_function,              # Displays main value in middle of screen
+#   setup_function,                        # run arbitrary screen setup code, if needed. NO ARGS.  
+#   encoder_change_function,               # called when Encoder value changes (no other buttons held)
+#   pad_held_function                      # called when pad is held. 
+#   fn_button_press_function,              # called when function Button pressed
+#   fn_button_dbl_press_function,          # called when function btn double clicked
+#   fn_button_held_function,               # called when function button is held
+#   fn_button_held_and_btn_click_function) # called when fn button held, and another drumpad button is clicked
+
+
 # 1) Change Midi Bank
 midibank_menu = Menu("Play",
                      midi.get_midi_bank_display_text,
                      voidd,
                      midi.chg_midi_bank,
+                     midi.pad_held_function,
                      voidd,
                      midi.double_click_func_btn,
                      voidd,
@@ -164,12 +168,14 @@ scale_menu = Menu("Scale Select",
                   voidd,
                   voidd,
                   voidd,
+                  voidd,
                   voidd)
 
 # 3) Looper Settings
 looper_menu = Menu("Looper Mode",
                    looper.get_loopermode_display_text,
                    looper.update_play_rec_icons,
+                   looper.encoder_chg_function,
                    voidd,
                    looper.process_select_btn_press,
                    looper.toggle_loops_playstate,

@@ -1,6 +1,6 @@
-from settings import SETTINGS
 import time
 import inputs
+from settings import SETTINGS
 from looper import setup_midi_loops, MidiLoop
 from menus import Menu
 from debug import debug, DEBUG_MODE
@@ -14,7 +14,7 @@ from display import check_show_display
 
 # Initialize MIDI and other components
 setup_midi()
-setup_midi_loops()	
+setup_midi_loops()
 Menu.initialize()
 
 # Initialize time variables

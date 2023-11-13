@@ -5,7 +5,7 @@ import adafruit_ssd1306
 import time
 
 # PINS / SETUP
-SCL_PIN = board.GP19              
+SCL_PIN = board.GP19
 SDA_PIN = board.GP18
 i2c = busio.I2C(SCL_PIN, SDA_PIN)
 display = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
@@ -111,6 +111,9 @@ def toggle_select_button_icon(onOrOff=False):
     Args:
         onOrOff (bool, optional): Indicates whether to turn the icon on or off. Defaults to False.
     """
+    if SETTINGS["PERFORMANCE_MODE"]:
+        return
+    
     startx = 30  # Px from the left of the screen
     starty = BOTTOM_Y_START
     icon_width = 35
@@ -135,6 +138,8 @@ def toggle_recording_icon(onOrOff=False):
     Args:
         onOrOff (bool, optional): Indicates whether to turn the icon on or off. Defaults to False.
     """
+    if SETTINGS["PERFORMANCE_MODE"]:
+        return
     height = 10
     width = 18
     starty = HEIGHT - height
@@ -153,6 +158,8 @@ def toggle_play_icon(onOrOff=False):
     Args:
         onOrOff (bool, optional): Indicates whether to turn the icon on or off. Defaults to False.
     """
+    if SETTINGS["PERFORMANCE_MODE"]:
+        return
     height = 10
     width = 18
     starty = HEIGHT - 23
@@ -196,6 +203,10 @@ def display_notification(msg=None):
     Args:
         msg (str): Notification message to display.
     """
+
+    if SETTINGS["PERFORMANCE_MODE"]:
+        return
+    
     global notification_text_title
     global notification_ontime
     global prev_top_text
