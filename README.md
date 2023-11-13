@@ -72,3 +72,11 @@ In short:
 See "djbb loopster manual.pdf" in this repo.
 
 I also sell PCBs/Kits here if ya want: https://djbajablast.etsy.com
+
+## Changelog
+
+Nov 23
+- Created loopster_settings.json file for easy default config
+- Added performance mode congig option
+- Added looper feature - twist encoder ccw to remove a random loop note
+- Added more scales
