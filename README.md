@@ -77,6 +77,6 @@ I also sell PCBs/Kits here if ya want: https://djbajablast.etsy.com
 
 Nov 23
 - Created loopster_settings.json file for easy default config
-- Added performance mode congig option
-- Added looper feature - twist encoder ccw to remove a random loop note
+- Added performance mode config option
+- Added looper feature - twist encoder CCW to remove a random loop note
 - Added more scales
