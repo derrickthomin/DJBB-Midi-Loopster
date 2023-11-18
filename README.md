@@ -65,8 +65,10 @@ In short:
 - Solder the fn button and top left pad to the front of the board. You must do this first!! These are the top-leftmost buttons.
 - Solder everything else (The pico, aux, and 2 resistors go on the back).
 - Follow [Adafruit's guide](https://learn.adafruit.com/getting-started-with-raspberry-pi-pico-circuitpython?gclid=CjwKCAjw6p-oBhAYEiwAgg2PghND96Zkn-Pus4noFSVOym_cpsFfdWGF-w9weuVSVz8qTd52cKaOGBoCJ0QQAvD_BwE) for installing CircuitPython on your Pico
+
+## Firmware Upload (use this to update as well)
 - Delete everything from the Pico on your computer (should be showing up as a USB drive on your computer).
-- Copy everything from "src" in this repo to the Pico
+- Download and copy everything from "src" in this repo to the Pico
 
 ## Usage
 See "djbb loopster manual.pdf" in this repo.
