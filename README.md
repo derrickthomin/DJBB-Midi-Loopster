@@ -50,13 +50,17 @@ Also see BOM csv in this repo
 
 3 x 10nF Capacitors
 
+17 x Cherry style keycaps (technically optional... but you want em)
+
 1 x 3D printed case (optional)
 
 1 x 3D printed screen case (optional)
 
 1 x 4 pin female large headers for screen (optional)
 
-17 x Cherry style key switches (technically optional... but you want em)
+4 x m2.5 screws - for screen case (optional) 
+
+4 x m3 screws - for case (optional)
 
 ## Assembly
 [See my guide here](https://www.djbajablast.com/post/djbb-midi-loopster) for in depth assembly instructions.
