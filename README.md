@@ -63,7 +63,7 @@ Also see BOM csv in this repo
 4 x m3 screws - for case (optional)
 
 ## Assembly
-[See my guide here](https://www.djbajablast.com/post/djbb-midi-loopster) for in depth assembly instructions.
+See the detailed Loopster Manual and Assembly Guide pdf in this repo for in depth assembly instructions.
 
 In short:
 - Solder the fn button and top left pad to the front of the board. You must do this first!! These are the top-leftmost buttons.
@@ -75,13 +75,14 @@ In short:
 - Download and copy everything from "src" in this repo to the Pico
 
 ## Usage
-See "djbb loopster manual.pdf" in this repo.
+See the detailed Loopster Manual and Assembly Guide pdf in this repo
 
 I also sell PCBs/Kits here if ya want: https://djbajablast.etsy.com
 
 ## Changelog
 
-Nov 23
+_Nov 23_
+- Created new user guide + assembly manual
 - Created loopster_settings.json file for easy default config
 - Added performance mode config option
 - Added looper feature - twist encoder CCW to remove a random loop note
