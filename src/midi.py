@@ -288,12 +288,15 @@ def chg_midi_bank(upOrDown = True, display_text=True):
 
     current_midibank_set = current_scale_dict['midi_arrays']
     if upOrDown is True and midi_bank_idx < (len(current_midibank_set) - 1):
+        clear_all_notes()
         midi_bank_idx = midi_bank_idx + 1
 
     if upOrDown is False and midi_bank_idx > 0:
+        clear_all_notes()
         midi_bank_idx = midi_bank_idx - 1
 
-    current_midi_notes = current_midibank_set[midi_bank_idx] # Dont let notes get stuck on
+    current_midi_notes = current_midibank_set[midi_bank_idx]
+     # Dont let notes get stuck on
     for note in current_midi_notes:
          midi.send(NoteOff(note, 0))
 
