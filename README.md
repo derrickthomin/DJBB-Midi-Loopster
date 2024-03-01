@@ -62,6 +62,9 @@ Also see BOM csv in this repo
 
 4 x m3 screws - for case (optional)
 
+Models for printed parts here:
+https://www.printables.com/model/661953-djbb-midi-loopster-3d-printed-parts
+
 ## Assembly
 See the detailed Loopster Manual and Assembly Guide pdf in this repo for in depth assembly instructions.
 
