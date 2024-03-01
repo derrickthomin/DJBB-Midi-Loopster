@@ -80,6 +80,10 @@ See the detailed Loopster Manual and Assembly Guide pdf in this repo
 I also sell PCBs/Kits here if ya want: https://djbajablast.etsy.com
 
 ## Changelog
+_Mar 24_
+- chord mode added!
+- Updated logic to make it harder to accidentally change midi banks when setting velocity / encoder mode
+- Scales fixed & more added. Now you can choose the root and the scale separately.
 
 _Nov 23_
 - Created new user guide + assembly manual
