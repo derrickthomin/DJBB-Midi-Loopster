@@ -1,5 +1,6 @@
 from settings import SETTINGS
 import adafruit_midi
+import time
 import usb_midi
 import busio
 import board
@@ -7,7 +8,7 @@ from collections import OrderedDict
 from debug import debug, DEBUG_MODE
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
-from display import display_notification,display_text_middle
+from display import display_notification,display_text_middle,display_bank_number
 
 # PINS / SETUP
 NUM_PADS = 16
@@ -25,7 +26,7 @@ aux_midi = adafruit_midi.MIDI(
 )
 
 # MIDI 1: SET UP NOTES / BANKS
-current_midi_notes = SETTINGS['MIDI_NOTES_DEFAULT']
+current_midi_notes = SETTINGS['MIDI_NOTES_DEFAULT']                   # Track chord notes. Only 16 for now. Will store loop objects.
 midi_banks_chromatic = [[0 + i for i in range(16)],
               [4 + i for i in range(16)],
               [20 + i for i in range(16)],
@@ -39,11 +40,13 @@ midi_banks_chromatic = [[0 + i for i in range(16)],
 current_midibank_set = midi_banks_chromatic
 midi_bank_idx = SETTINGS['DEFAULT_MIDIBANK_IDX']
 scale_bank_idx = 0
-current_scale_dict = []
+current_scale_list = []
+scale_bank_idx = 0 # maj, minor, etc. separate from root
+rootnote_idx = 0 # C,Db,D..
 midi_velocities = [SETTINGS['DEFAULT_VELOCITY']] * 16 
 midi_velocities_singlenote = SETTINGS['DEFAULT_SINGLENOTE_MODE_VELOCITIES'] 
 midi_mode = "all"   # "usb" "aux" or "all"
-play_mode = "standard" # 'standard' 'encoder'
+play_mode = "standard" # 'standard' 'encoder' 'chord'
 current_assignment_velocity = 120
 
 midi_to_note = {
@@ -60,81 +63,61 @@ midi_to_note = {
     120: 'C10', 121: 'C#10', 122: 'D10', 123: 'D#10', 124: 'E10', 125: 'F10', 126: 'F#10', 127: 'G10',
 }
 
-# MIDI 2: SCALES 
-scale_root_note_dict = {
-    'C': 0,
-    'C#': 1,
-    'Db': 1,
-    'D': 2,
-    'D#': 3,
-    'Eb': 3,
-    'E': 4,
-    'F': 5,
-    'F#': 6,
-    'Gb': 6,
-    'G': 7,
-    'G#': 8,
-    'Ab': 8,
-    'A': 9,
-    'A#': 10,
-    'Bb': 10,
-    'B': 11
-}
+scale_root_notes_list = [('C', 0),
+                        ('Db', 1), 
+                        ('D', 2), 
+                        ('Eb', 3), 
+                        ('E', 4), 
+                        ('F', 5), 
+                        ('Gb', 6), 
+                        ('G', 7),
+                        ('Ab', 8), 
+                        ('A', 9), 
+                        ('Bb', 10), 
+                        ('B', 11)]
 
-all_scales_midi_dicts = []
 
-# Dictionary of common major scales (key: root note, value: scale intervals)
-major_scales_intervals = OrderedDict({
-    'C': [0, 2, 4, 5, 7, 9, 11],   # C major
-    'G': [7, 9, 11, 0, 2, 4, 5],   # G major
-    'D': [2, 4, 5, 7, 9, 11, 0],   # D major
-    'A': [9, 11, 0, 2, 4, 5, 7],   # A major
-    'E': [4, 5, 7, 9, 11, 0, 2],   # E major
-    'B': [11, 0, 2, 4, 5, 7, 9],   # B major
-    'F#': [6, 7, 9, 11, 1, 2, 4],  # F# major
-    'Db': [1, 2, 4, 6, 7, 9, 11],  # Db major
-    'Ab': [8, 10, 0, 1, 3, 4, 6],  # Ab major
-    'Eb': [3, 5, 6, 8, 10, 11, 1], # Eb major
-    'Bb': [10, 0, 1, 3, 5, 6, 8],  # Bb major
-    'F': [5, 7, 8, 10, 0, 1, 3]    # F major
+
+
+scale_intervals = OrderedDict({
+    "maj": [2, 2, 1, 2, 2, 2, 1],
+    "min": [2, 1, 2, 2, 1,  2,2],
+    "harm_min": [2, 1, 2, 2, 1, 3, 1],
+    "mel_min": [2, 1, 2, 2, 2, 2, 1],
+    "dorian": [2, 1, 2, 2, 2, 1, 2],
+    "phrygian": [1, 2, 2, 2, 1, 2, 2],
+    "lydian": [2, 2, 2, 1, 2, 2, 1]
+    #"mixolydian": [2, 2, 1, 2, 2, 1, 2],
+    #"aeolian": [2, 1, 2, 2, 1, 2, 2],
+    #"locrian": [1, 2, 2, 1, 2, 2, 2],
+    #"lyd_dom": [2, 2, 2, 1, 2, 1, 2],
+    #"super_loc": [1, 2, 1, 2, 2, 2, 2],
+    #"min_penta": [3, 2, 2, 3, 2],
+    #"maj_penta": [2, 2, 3, 2, 3],
+    #"min_blues": [3, 2, 1, 1, 3, 2],
+    #"maj_blues": [2, 1, 1, 3, 2, 3],
+    #"wh_half_dim": [2, 1, 2, 1, 2, 1, 2, 1],
+    #"half_wh_dim": [1, 2, 1, 2, 1, 2, 1, 2]
 })
 
-# Dictionary of common minor scales (key: root note, value: scale intervals)
-minor_scales_intervals = OrderedDict({
-    'A': [9, 11, 0, 2, 4, 5, 7],   # A minor
-    'E': [4, 5, 7, 9, 11, 0, 2],   # E minor
-    'B': [11, 0, 2, 4, 5, 7, 9],   # B minor
-    'F#': [6, 7, 9, 11, 1, 2, 4],  # F# minor
-    'C#': [1, 2, 4, 6, 7, 9, 11],  # C# minor
-    'Ab': [8, 10, 0, 1, 3, 4, 6],  # Ab minor
-    'Eb': [3, 5, 6, 8, 10, 11, 1], # Eb minor
-    'Bb': [10, 11, 1, 3, 5, 6, 8], # Bb minor
-    'F': [5, 7, 8, 10, 0, 1, 3],   # F minor
-    'C': [0, 1, 3, 5, 7, 8, 10],   # C minor
-    'D': [2, 4, 5, 7, 9, 11, 1]    # D minor
-})
 
 def get_midi_notes_in_scale(root, scale_intervals): # Helper function to generate scale midi
-
-    # Number of octaves to generate notes for (C0 to C10)
-    num_octaves = 11
-
-    # List to store MIDI notes
+    oct =1  # octave
     midi_notes = []
+    cur_note = root 
 
-    for octave in range(num_octaves):
-        for interval in scale_intervals:
-            midi_note = octave * 12 + ((root + interval) % 12)
+    for interval in scale_intervals:
+        cur_note = cur_note + interval
+        midi_notes.append(cur_note)
 
-            # Account invalid midi, and when interval order is wonky
-            if len(midi_notes) > 0 and midi_note < midi_notes[-1]: 
-                midi_note = midi_note + 12
-            while midi_note > 127:
-                midi_note = midi_note - 12
-            while midi_note < 0:
-                midi_note = midi_note + 12
-            
-            midi_notes.append(midi_note)
+    base_notes = midi_notes
+    while cur_note < 127:
+        for note in base_notes:
+            cur_note = note + (12 * oct)
+            if cur_note > 127:
+                break
+            midi_notes.append(cur_note)
+        oct = oct + 1
 
     # Now split into 16 pad sets 
     midi_notes_pad_mapped = []
@@ -158,113 +141,73 @@ def get_midi_notes_in_scale(root, scale_intervals): # Helper function to generat
 
     return midi_notes_pad_mapped
 
-# Generate arrays for all scales
-chromatic_dict = {
-    'root_note': 'ALL',
-    'type': "Chromatic",
-    'midi_arrays':midi_banks_chromatic
-}
-all_scales_midi_dicts.append(chromatic_dict)
+# Houses ALL scales. Sorted by type - maj/min/etc
+# Lists of tuples (name, notes ary)
+# Structure: all_scales list [("major", [("C", 01234...),
+#                                       ("D", 01234...),..]
+all_scales_list = []
 
-for root_note, intervals in major_scales_intervals.items(): # Major
-    major_scale_array = get_midi_notes_in_scale(scale_root_note_dict[root_note], intervals)
-    scale_dict = {
-        'root_note': root_note,
-        'type': "Major",
-        'midi_arrays':major_scale_array
-    }
-    all_scales_midi_dicts.append(scale_dict)
+chromatic_ary = ('chromatic',[('chromatic',midi_banks_chromatic)])
+all_scales_list.append(chromatic_ary)
 
-for root_note, intervals in minor_scales_intervals.items(): # Minor
-    minor_scale_array = get_midi_notes_in_scale(scale_root_note_dict[root_note], intervals)
-    scale_dict = {
-        'root_note': root_note,
-        'type': "Minor",
-        'midi_arrays':minor_scale_array
-    }
-    all_scales_midi_dicts.append(scale_dict)
+for scale_name, interval in scale_intervals.items():
+    interval_ary = []
+    for root_name, root in scale_root_notes_list:
+        interval_ary.append((root_name,get_midi_notes_in_scale(root,interval)))
+        #interval_dict[root_name] = get_midi_notes_in_scale(root,interval)
+    #all_scales_dicts[scale_name] = interval_dict
+    all_scales_list.append((scale_name,interval_ary))
 
-def create_chord(root_note, chord_type, scale_type='major'):
-    """
-    Get the MIDI note values of a specific chord based on the given root note and chord type.
-
-    Args:
-        root_note (str): The root note of the chord (e.g., 'C', 'G#', 'F').
-        chord_type (str): The type of chord (e.g., 'maj', 'min', '7', 'maj7', 'm7').
-        scale_type (str): The type of scale to use (e.g., 'major', 'minor', 'other').
-                         Default is 'major'.
-
-    Returns:
-        list: A list of MIDI note values representing the chord.
-    """
-    if scale_type == 'major':
-        scale_dict = major_scales_intervals
-    elif scale_type == 'minor':
-        scale_dict = minor_scales_intervals
-    # elif scale_type == 'other':
-    #     scale_dict = other_scales_intervals
-    else:
-        raise ValueError("Invalid scale type. Please use 'major', 'minor', or 'other'.")
-
-    if root_note not in scale_dict:
-        raise ValueError(f"Root note '{root_note}' not found in the scale dictionary.")
-
-    intervals = scale_dict[root_note]
-    root_midi = 60  # MIDI note number of 'C' (assuming MIDI Note 60 is middle C)
-
-    # Convert root note to MIDI note number
-    root_midi += intervals[0]
-
-    # Calculate the MIDI note values of the chord based on the intervals
-    chord_notes_midi = [(root_midi + interval) % 12 for interval in intervals]
-
-    # Apply chord type to the notes
-    if chord_type == 'maj':
-        pass
-    elif chord_type == 'min':
-        chord_notes_midi[2] -= 1
-    elif chord_type == '7':
-        chord_notes_midi.append((root_midi + intervals[4] + 10) % 12)
-    elif chord_type == 'maj7':
-        chord_notes_midi.append((root_midi + intervals[4] + 11) % 12)
-    elif chord_type == 'm7':
-        chord_notes_midi[2] -= 1
-        chord_notes_midi.append((root_midi + intervals[4] + 10) % 12)
-    # Add more chord types here...
-
-    # Convert MIDI note numbers back to MIDI values (0 to 127)
-    chord_notes_midi = [root_midi + note for note in chord_notes_midi]
-
-    return chord_notes_midi
 
 # Display Text = whehter to print new info to screen.
 def chg_scale(upOrDown=True,display_text = True):
     global scale_bank_idx
+    global rootnote_idx
     global midi_bank_idx
-    global current_scale_dict
+    global current_scale_list
     global current_midi_notes
-    """
-    Get the next or previous scale array from 'all_scales_midi_dicts'.
 
-    Args:
-        scale_array (list): The current scale array.
-        upOrDown (bool): Set to True to go up (next) the scale, and False to go down (previous).
-                         Default is True (go up).
-
-    Returns:
-        list: The next or previous scale array.
-    """
-    total_scales = len(all_scales_midi_dicts)
+    total_scales = len(all_scales_list)
 
     if upOrDown:
         scale_bank_idx = (scale_bank_idx + 1) % total_scales
     else:
         scale_bank_idx = (scale_bank_idx - 1) % total_scales
 
-    current_scale_dict = all_scales_midi_dicts[scale_bank_idx]
-
     midi_bank_idx = 2
-    current_midi_notes = current_scale_dict['midi_arrays'][midi_bank_idx]
+    current_scale_list = all_scales_list[scale_bank_idx][1] # maj, min, etc. item 0 is the name.
+    if scale_bank_idx == 0: #special handling for chromatic.
+        current_midi_notes = current_scale_list[0][1][midi_bank_idx]
+    else:
+        current_midi_notes = current_scale_list[rootnote_idx][1][midi_bank_idx] # item 0 is c,d,etc.
+    if DEBUG_MODE:
+        print(f"current midi notes: {current_midi_notes}")
+    if DEBUG_MODE:
+        debug.add_debug_line("Current Scale",get_scale_display_text())
+    if display_text:
+        display_text_middle(get_scale_display_text())
+    #display_scale()
+
+def chg_root(upOrDown=True,display_text = True):
+    global scale_bank_idx
+    global rootnote_idx
+    global midi_bank_idx
+    global current_midi_notes
+
+    if scale_bank_idx == 0: #doesnt make sense for chromatic.
+        return
+
+    total_roots = len(current_scale_list)
+
+    if upOrDown:
+        rootnote_idx = (rootnote_idx + 1) % total_roots
+    else:
+        rootnote_idx = (rootnote_idx - 1) % total_roots
+
+
+    #midi_bank_idx = 2
+    # current_scale_list = all_scales_list[scale_bank_idx][1] # maj, min, etc. item 0 is the name.
+    current_midi_notes = current_scale_list[rootnote_idx][1][midi_bank_idx] # item 0 is c,d,etc.
     if DEBUG_MODE:
         print(f"current midi notes: {current_midi_notes}")
     if DEBUG_MODE:
@@ -275,10 +218,16 @@ def chg_scale(upOrDown=True,display_text = True):
 
 # External use - by Menu object to print to screen
 def get_scale_display_text():
-    num_scales = len(all_scales_midi_dicts)
-    disp_text = [f"Scale: {current_scale_dict['root_note']} {current_scale_dict['type']}",
-                 "",
-                 f"               {scale_bank_idx+1}/{num_scales}"]
+    num_scales = len(all_scales_list)
+
+    if scale_bank_idx == 0: #special handling for chromatic
+        disp_text = "Scale: Chromatic"
+    else:
+        scale_name = all_scales_list[scale_bank_idx][0]
+        root_name = current_scale_list[rootnote_idx][0]
+        disp_text = [f"Scale: {root_name} {scale_name}",
+                    "",
+                    f"               {scale_bank_idx+1}/{num_scales}"]
     return disp_text
 
 # display = should it print to display
@@ -286,7 +235,11 @@ def chg_midi_bank(upOrDown = True, display_text=True):
     global midi_bank_idx
     global current_midi_notes
 
-    current_midibank_set = current_scale_dict['midi_arrays']
+    if scale_bank_idx == 0:
+        current_midibank_set = current_scale_list[0][1] # chromatic is special
+    else:
+        current_midibank_set = current_scale_list[rootnote_idx][1]
+
     if upOrDown is True and midi_bank_idx < (len(current_midibank_set) - 1):
         clear_all_notes()
         midi_bank_idx = midi_bank_idx + 1
@@ -295,15 +248,12 @@ def chg_midi_bank(upOrDown = True, display_text=True):
         clear_all_notes()
         midi_bank_idx = midi_bank_idx - 1
 
-    current_midi_notes = current_midibank_set[midi_bank_idx]
-     # Dont let notes get stuck on
-    for note in current_midi_notes:
-         midi.send(NoteOff(note, 0))
+    current_midi_notes = current_midibank_set[midi_bank_idx] # Dont let notes get stuck on
 
     if DEBUG_MODE:
         debug.add_debug_line("Midi Bank Vals",get_midi_bank_display_text())
     if display_text:
-        display_text_middle(get_midi_bank_display_text())
+        display_bank_number(midi_bank_idx)
 
     return
 
@@ -331,7 +281,7 @@ def get_midi_bank_display_text():
     Returns:
         str: A string containing the MIDI bank index and the note range, e.g., "Bank: 0 (C1 - G1)".
     """
-    disp_text = f"Bank: {midi_bank_idx}  ({get_currentbank_noterange()})"
+    disp_text = f"Bank: {midi_bank_idx}"
     return disp_text
 
 # Get a string of text corresponding to the note range of the current MIDI bank
@@ -440,15 +390,15 @@ def send_midi_note_off(note):
         note (int): MIDI note value (0-127).
     """
     if midi_mode == "usb" or midi_mode == "all":
-        midi.send(NoteOff(note, 0))
+        midi.send(NoteOff(note, 1))
 
     if midi_mode == "aux" or midi_mode == "all":
-        aux_midi.send(NoteOff(note, 0))
+        aux_midi.send(NoteOff(note, 1))
 
 # Send an off message to ALL notes. Use for panic, or to make sure nothing is stuck on.
 def clear_all_notes():
     for i in range(127):
-        midi.send(NoteOff(i,0))
+        send_midi_note_off(i)
 
 # Change MIDI mode to the next or previous mode
 def chg_midi_mode(nextOrPrev=1):
@@ -477,12 +427,15 @@ def chg_midi_mode(nextOrPrev=1):
             midi_mode = "aux"
 
 # Double-click function for MIDI bank, changes velocity to encoder roll mode
+# Play Modes: standard, encoder (turn to play notes), chord (create chords and play)
 def double_click_func_btn():
     global play_mode
 
     if play_mode == "standard":
         play_mode = "encoder"
     elif play_mode == "encoder":
+        play_mode = "chord"
+    elif play_mode == "chord":
         play_mode = "standard"
     
     display_notification(f"Note mode: {play_mode}")
@@ -515,5 +468,5 @@ def pad_held_function(pad_idx,encoder_delta,first_pad_held):
     return delta_used
 
 def setup_midi():
-    global current_scale_dict
-    current_scale_dict = all_scales_midi_dicts[scale_bank_idx]
+    global current_scale_list
+    current_scale_list = all_scales_list[scale_bank_idx][1]

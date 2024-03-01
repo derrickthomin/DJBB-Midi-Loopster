@@ -2,6 +2,7 @@ import time
 import inputs
 from settings import SETTINGS
 from looper import setup_midi_loops, MidiLoop
+import chordmaker
 from menus import Menu
 from debug import debug, DEBUG_MODE
 from midi import (
@@ -22,6 +23,7 @@ polling_time_prev = time.monotonic()
 if DEBUG_MODE:
     debug_time_prev = time.monotonic()
 
+# Main loop
 while True:
     timenow = time.monotonic()
 
@@ -46,8 +48,11 @@ while True:
             )
         send_midi_note_off(note_val)
 
+        # Add note to current loop or chord if recording
         if MidiLoop.current_loop_obj.loop_record_state:
             MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, False)
+        if chordmaker.recording:
+            chordmaker.current_chord_notes[chordmaker.recording_pad_idx].add_loop_note(note_val, velocity, False)
 
     # Send MIDI notes on
     for note in inputs.new_notes_on:
@@ -58,8 +63,11 @@ while True:
             )
         send_midi_note_on(note_val, velocity)
 
+        # Add note to current loop or chord if recording
         if MidiLoop.current_loop_obj.loop_record_state:
             MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, True)
+        if chordmaker.recording:
+            chordmaker.current_chord_notes[chordmaker.recording_pad_idx].add_loop_note(note_val, velocity, True)
 
     # Handle loop notes if playing
     if MidiLoop.current_loop_obj.loop_playstate:
@@ -71,3 +79,18 @@ while True:
             for note in loop_notes_off:
                 send_midi_note_off(note[0])
  
+    # Chord Mode loops
+    for chord in chordmaker.current_chord_notes:
+        if chord == "":
+            continue
+        new_notes = chord.get_new_notes() # chord is a loop object
+        if new_notes:
+            loop_notes_on, loop_notes_off = new_notes
+            for note_val,velocity in loop_notes_on:
+                send_midi_note_on(note_val, velocity)
+                if MidiLoop.current_loop_obj.loop_record_state:
+                    MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, True)
+            for note_val,velocity in loop_notes_off:
+                send_midi_note_off(note_val) 
+                if MidiLoop.current_loop_obj.loop_record_state:
+                    MidiLoop.current_loop_obj.add_loop_note(note_val, velocity, False)

@@ -26,18 +26,18 @@
         "MIDI_NOTES_LIMIT": 50,
         "MIDI_NOTES_LIMIT_helptext": "Maximum limit for MIDI notes. Change with care.",
 
-        "NAV_BUTTONS_POLL_S": 1,
+        "NAV_BUTTONS_POLL_S": 0.05,
         "NAV_BUTTONS_POLL_S_helptext": "Polling interval for navigation buttons in seconds.",
 
-        "BUTTON_HOLD_THRESH_S": 0.5,
+        "BUTTON_HOLD_THRESH_S": 0.4,
         "BUTTON_HOLD_THRESH_S_helptext": "Threshold duration for considering a button as held in seconds.",
 
         "DBL_PRESS_THRESH_S": 0.4,
         "DBL_PRESS_THRESH_S_helptext": "Threshold duration for considering a double press in seconds.",
         
-        "NOTIFICATION_THRESH_S": 0.5,
+        "NOTIFICATION_THRESH_S": 0.7,
         "NOTIFICATION_THRESH_S_helptext": "Threshold duration for displaying notifications in seconds.",
 
         "DISPLAY_NOTIFICATION_METERING_THRESH": 0.08,
         "DISPLAY_NOTIFICATION_METERING_THRESH_helptext": "Threshold for displaying metering notifications."
-}
+} 

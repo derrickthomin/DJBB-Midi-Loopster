@@ -40,7 +40,7 @@ def compile_settings():
         
         # Replace defaults with stuff from the .json file, if it exists.
         if len(settings_from_file) > 0:
-            for key,item in DEFAULT_SETTINGS.items():   
+            for key in DEFAULT_SETTINGS:   
                 if key in settings_from_file:
                     SETTINGS[key] = settings_from_file[key]
 

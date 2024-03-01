@@ -2,6 +2,7 @@ from settings import SETTINGS
 import midi
 import display
 import looper
+import chordmaker
 from debug import DEBUG_MODE
 
 class Menu:
@@ -142,7 +143,7 @@ def voidd(*args):
 #   primary_display_function,              # Displays main value in middle of screen
 #   setup_function,                        # run arbitrary screen setup code, if needed. NO ARGS.  
 #   encoder_change_function,               # called when Encoder value changes (no other buttons held)
-#   pad_held_function                      # called when pad is held. 
+#   pad_held_function                      # called when pad is held.
 #   fn_button_press_function,              # called when function Button pressed
 #   fn_button_dbl_press_function,          # called when function btn double clicked
 #   fn_button_held_function,               # called when function button is held
@@ -155,7 +156,7 @@ midibank_menu = Menu("Play",
                      voidd,
                      midi.chg_midi_bank,
                      midi.pad_held_function,
-                     voidd,
+                     chordmaker.chordmode_fn_press_function,
                      midi.double_click_func_btn,
                      voidd,
                      voidd)
@@ -164,10 +165,10 @@ midibank_menu = Menu("Play",
 scale_menu = Menu("Scale Select",
                   midi.get_scale_display_text,
                   voidd,
+                  midi.chg_root,
+                  voidd,
                   midi.chg_scale,
-                  voidd,
-                  voidd,
-                  voidd,
+                  midi.chg_scale,
                   voidd,
                   voidd)
 

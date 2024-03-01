@@ -3,7 +3,7 @@ import time
 import random
 from debug import debug,DEBUG_MODE
 import display
-from midi import clear_all_notes
+from midi import clear_all_notes,send_midi_note_off
 
 class MidiLoop:
     """
@@ -37,11 +37,13 @@ class MidiLoop:
     loops = []
     current_loop_obj = None
 
-    def __init__(self):
+    # Types = "loop" or "chord"
+    # playmodes = "loop", "toggle","oneshot"
+    def __init__(self,loop_type="loop"):
         """
         Initializes a new MidiLoop instance.
         """
-        MidiLoop.loops.append(self)
+        self.loop_type = loop_type
         self.loop_start_timestamp = 0
         self.loop_encoder_mode_timestamp = 0
         self.total_loop_time = 0
@@ -52,7 +54,10 @@ class MidiLoop:
         self.loop_notes_off_queue = []
         self.loop_playstate = False
         self.loop_record_state = False
-        self.has_loop =  False   
+        self.has_loop =  False
+
+        if self.loop_type == "loop":
+            MidiLoop.loops.append(self)
 
     def reset_loop(self):
         """
@@ -63,10 +68,13 @@ class MidiLoop:
         self.loop_notes_on_queue = []
         self.loop_notes_off_queue = []
 
+        # Set up new note ary for next time around
         for note in (self.loop_notes_ontime_ary):
             self.loop_notes_on_queue.append(note)
+            send_midi_note_off(note[0]) # catch hanging notes
         for note in (self.loop_notes_offtime_ary):
             self.loop_notes_off_queue.append(note)
+
 
     def clear_loop(self):
         """
@@ -108,13 +116,14 @@ class MidiLoop:
 
         self.current_loop_time = 0
 
-        if self.loop_playstate:
+        if self.loop_playstate: # djt idk if we need this?
             self.reset_loop()
 
-        else:
+        if not self.loop_playstate:
             self.loop_start_timestamp = 0
         
-        display.toggle_play_icon(self.loop_playstate)
+        if self.loop_type == "loop":
+            display.toggle_play_icon(self.loop_playstate)
         
         if DEBUG_MODE:
             debug.add_debug_line("Loop Playstate", self.loop_playstate)
@@ -197,9 +206,42 @@ class MidiLoop:
                 print("cannot remove loop note - invalid index")
             return
         else:
-            self.loop_notes_ontime_ary.pop(idx)
-            self.loop_notes_offtime_ary.pop(idx)
+            try:
+                self.loop_notes_ontime_ary.pop(idx)
+                self.loop_notes_offtime_ary.pop(idx)
+            except IndexError:
+                print("couldn't remove note")
         
+    # Trim silence at the beginning / end of loop. Used in chord mode.
+    def trim_silence(self):
+
+        if len(self.loop_notes_ontime_ary) == 0:
+            return
+        
+        # Get loop data we need
+        first_hit_time = self.loop_notes_ontime_ary[0][2]
+        last_note = self.loop_notes_ontime_ary[-1][0]   # Use this in case no off note recorded
+        last_hit_time_off = self.loop_notes_offtime_ary[-1][2]
+        
+        # Make hit time 1 = 0.0. Shift everything else back.
+        for idx, (note, vel, hit_time) in enumerate(self.loop_notes_ontime_ary): 
+            new_time = hit_time - first_hit_time
+            self.loop_notes_ontime_ary[idx] = (note,vel,new_time)
+        
+        for idx, (note, vel, hit_time) in enumerate(self.loop_notes_offtime_ary): 
+            new_time = hit_time - first_hit_time
+            self.loop_notes_offtime_ary[idx] = (note,vel,new_time)
+
+        # Update total length to match. Add a lil time to make sure all notes are within loop.
+        new_length = last_hit_time_off - first_hit_time + 0.5 
+        if DEBUG_MODE:
+            print(f"Silence Trimmed. New Loop Len: {new_length}  Old Loop Len: {self.total_loop_time}  ")
+        self.total_loop_time = new_length
+
+        # Fix any missed off notes
+        if len(self.loop_notes_ontime_ary) != len(self.loop_notes_offtime_ary):
+            self.loop_notes_offtime_ary.append((last_note,120,new_length - 0.5))
+        return
 
     def get_new_notes(self):
         """
@@ -217,7 +259,14 @@ class MidiLoop:
         if now_time - self.loop_start_timestamp > self.total_loop_time:
             if DEBUG_MODE:
                 print(f"self.total_loop_time: {self.total_loop_time}")
-            self.reset_loop()
+            
+            if self.loop_type == "loop": # Looping so reset
+                self.reset_loop()
+
+            if self.loop_type == "chord": # chord (used by chordmode) - turn off loop and clear arys
+                self.loop_toggle_playstate(False)
+                #self.loop_start_timestamp = 0
+
             return
 
         self.current_loop_time = time.monotonic() - self.loop_start_timestamp
@@ -243,7 +292,7 @@ class MidiLoop:
                 debug.check_display_debug()
             return new_notes
 
-def get_loopermode_display_text():
+def get_loopermode_display_text(): 
     disp_text = ["<- click = record ",
                  "   dbl  = st/stop",
                  "   hold = clear loop"]
