@@ -3,6 +3,7 @@ import board
 import digitalio
 import rotaryio
 import midi
+import chordmaker
 from debug import DEBUG_MODE
 from midi import (get_midi_velocity_by_idx,
                        get_midi_note_by_idx,
@@ -195,11 +196,11 @@ def check_inputs_slow():
             button_holdtimes_s[i] = 0
         
         # Process holds here so we don't have to do it in fast loop
-        if button_held[i] is True:
+        if button_states[i] is True:
             hold_count = hold_count + 1
             if any_pad_held is False:
                 any_pad_held = True
-                delta_used = Menu.current_menu.pad_held_function(i,encoder_delta,True)
+                delta_used = Menu.current_menu.pad_held_function(i,encoder_delta,True) # delta used = true if we did something with the encoder turn
             else:
                 delta_used = Menu.current_menu.pad_held_function(i,encoder_delta,False)
 
@@ -280,24 +281,30 @@ def process_inputs_fast():
     # so domething special if select button is held - no midi sent
     if select_button_held:
         for i in range(16):
-            if new_press[i]:
-                if singlehit_velocity_btn_midi is not None: 
+            if new_press[i] and midi.play_mode != "chord":
+                if singlehit_velocity_btn_midi is not None:
                     singlehit_velocity_btn_midi = None
-                    Menu.display_notification(f"Single Note Mode: OFF")
+                    Menu.display_notification("Single Note Mode: OFF")
                 else:
                     singlehit_velocity_btn_midi = get_midi_note_by_idx(i)
                     Menu.display_notification(f"Pads mapped to: {get_midi_note_name_text(singlehit_velocity_btn_midi)}")
+            
+            # In chord mode.. do something special
+            if new_press[i] and midi.play_mode == "chord":
+                chordmaker.add_remove_chord(i)
+
         return
 
-    # Do something spcial if encoder button is held ** DJT commnet below to delete encoder hold
+    # Panic button
     if encoder_button_held:
+        midi.clear_all_notes()
         return
 
     # In this mode, add directly to note queue with new encoder turns
     if midi.play_mode is "encoder" and any_pad_held is True:
 
         for i in range(16):
-            if button_held[i] is True:
+            if button_states[i] is True:
                 if encoder_delta < 0:
                     note = get_midi_note_by_idx(i)
 
@@ -312,8 +319,9 @@ def process_inputs_fast():
                     if singlehit_velocity_btn_midi:
                         note = singlehit_velocity_btn_midi
                     velocity = get_midi_velocity_by_idx(i)
-                    new_notes_off.append((note, 0))  # Clear previous before starting new. 
+                    new_notes_off.append((note, 0))  # Clear previous before starting new
                     new_notes_on.append((note, velocity))
+
 
     # else: # normal mode 
     for i in range(16):
@@ -328,13 +336,20 @@ def process_inputs_fast():
         if singlehit_velocity_btn_midi is not None:
             note = singlehit_velocity_btn_midi
             velocity = get_midi_velocity_singlenote_by_idx(i)
+
         else:
             note = get_midi_note_by_idx(i)
             velocity = get_midi_velocity_by_idx(i)
 
         if new_press[i]:
-            new_notes_on.append((note, velocity))
             if DEBUG_MODE is True : print(f"new press on {i}")
+            if chordmaker.current_chord_notes[i] and chordmaker.recording is False:
+                chordmaker.current_chord_notes[i].loop_toggle_playstate(True)
+                chordmaker.current_chord_notes[i].reset_loop()
+                
+            else:
+                new_notes_on.append((note, velocity))
+    
         
         if new_release[i]:
             new_notes_off.append((note, 127))
