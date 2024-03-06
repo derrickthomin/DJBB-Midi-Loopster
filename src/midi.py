@@ -8,7 +8,7 @@ from collections import OrderedDict
 from debug import debug, DEBUG_MODE
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
-from display import display_notification,display_text_middle,display_bank_number
+from display import display_notification,display_text_middle
 
 # PINS / SETUP
 NUM_PADS = 16
@@ -253,7 +253,7 @@ def chg_midi_bank(upOrDown = True, display_text=True):
     if DEBUG_MODE:
         debug.add_debug_line("Midi Bank Vals",get_midi_bank_display_text())
     if display_text:
-        display_bank_number(midi_bank_idx)
+        display_text_middle(get_midi_bank_display_text())
 
     return
 
