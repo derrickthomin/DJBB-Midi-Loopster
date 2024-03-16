@@ -146,7 +146,6 @@ def get_midi_notes_in_scale(root, scale_intervals): # Helper function to generat
 # Structure: all_scales list [("major", [("C", 01234...),
 #                                       ("D", 01234...),..]
 all_scales_list = []
-
 chromatic_ary = ('chromatic',[('chromatic',midi_banks_chromatic)])
 all_scales_list.append(chromatic_ary)
 
@@ -158,7 +157,8 @@ for scale_name, interval in scale_intervals.items():
     #all_scales_dicts[scale_name] = interval_dict
     all_scales_list.append((scale_name,interval_ary))
 
-
+NUM_SCALES = len(all_scales_list)
+NUM_ROOTS = len(scale_root_notes_list)
 # Display Text = whehter to print new info to screen.
 def chg_scale(upOrDown=True,display_text = True):
     global scale_bank_idx
@@ -186,7 +186,6 @@ def chg_scale(upOrDown=True,display_text = True):
         debug.add_debug_line("Current Scale",get_scale_display_text())
     if display_text:
         display_text_middle(get_scale_display_text())
-    #display_scale()
 
 def chg_root(upOrDown=True,display_text = True):
     global scale_bank_idx
@@ -197,16 +196,11 @@ def chg_root(upOrDown=True,display_text = True):
     if scale_bank_idx == 0: #doesnt make sense for chromatic.
         return
 
-    total_roots = len(current_scale_list)
-
     if upOrDown:
-        rootnote_idx = (rootnote_idx + 1) % total_roots
+        rootnote_idx = (rootnote_idx + 1) % NUM_ROOTS
     else:
-        rootnote_idx = (rootnote_idx - 1) % total_roots
+        rootnote_idx = (rootnote_idx - 1) % NUM_ROOTS
 
-
-    #midi_bank_idx = 2
-    # current_scale_list = all_scales_list[scale_bank_idx][1] # maj, min, etc. item 0 is the name.
     current_midi_notes = current_scale_list[rootnote_idx][1][midi_bank_idx] # item 0 is c,d,etc.
     if DEBUG_MODE:
         print(f"current midi notes: {current_midi_notes}")
@@ -214,11 +208,9 @@ def chg_root(upOrDown=True,display_text = True):
         debug.add_debug_line("Current Scale",get_scale_display_text())
     if display_text:
         display_text_middle(get_scale_display_text())
-    #display_scale()
 
 # External use - by Menu object to print to screen
 def get_scale_display_text():
-    num_scales = len(all_scales_list)
 
     if scale_bank_idx == 0: #special handling for chromatic
         disp_text = "Scale: Chromatic"
@@ -227,7 +219,7 @@ def get_scale_display_text():
         root_name = current_scale_list[rootnote_idx][0]
         disp_text = [f"Scale: {root_name} {scale_name}",
                     "",
-                    f"               {scale_bank_idx+1}/{num_scales}"]
+                    f"     {rootnote_idx+1}/{NUM_ROOTS}     {scale_bank_idx+1}/{NUM_SCALES}",]
     return disp_text
 
 # display = should it print to display

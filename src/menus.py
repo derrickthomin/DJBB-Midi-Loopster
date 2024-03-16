@@ -165,10 +165,10 @@ midibank_menu = Menu("Play",
 scale_menu = Menu("Scale Select",
                   midi.get_scale_display_text,
                   voidd,
-                  midi.chg_root,
+                  midi.chg_scale,
                   voidd,
-                  midi.chg_scale,
-                  midi.chg_scale,
+                  midi.chg_root,
+                  midi.chg_root,
                   voidd,
                   voidd)
 
