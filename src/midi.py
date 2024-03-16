@@ -219,7 +219,7 @@ def get_scale_display_text():
         root_name = current_scale_list[rootnote_idx][0]
         disp_text = [f"Scale: {root_name} {scale_name}",
                     "",
-                    f"     {rootnote_idx+1}/{NUM_ROOTS}     {scale_bank_idx+1}/{NUM_SCALES}",]
+                    f"       {rootnote_idx+1}/{NUM_ROOTS}     {scale_bank_idx+1}/{NUM_SCALES}",]
     return disp_text
 
 # display = should it print to display
